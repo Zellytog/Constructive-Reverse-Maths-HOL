@@ -422,7 +422,7 @@ Theorem restr_rev_rev : forall (ρ : typ_env) (n : nat),
 Proof.
   intros. induction n. reflexivity.
   unfold restr; rewrite restr_cons_r.
-  unfold restr in IHn. Search (rev (_ ++ [_])).
+  unfold restr in IHn.
   rewrite rev_unit. rewrite <- IHn. reflexivity.
 Qed.
 
