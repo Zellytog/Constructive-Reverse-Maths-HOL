@@ -1,4 +1,4 @@
 -R src CRM
-src/HOL_bis/core.v
-src/HOL_bis/fintype.v
-src/HOL_bis/Base.v
+src/HOL/core.v
+src/HOL/fintype.v
+src/HOL/Base.v
