@@ -18,7 +18,7 @@ Notation 𝔹ₛ := bool_st.
 Notation 𝕃ₛ := list_st.
 Notation ℙₛ := prop_st.
 Notation "s →ₛ s'" := (to_st s s') (at level 86, right associativity).
-Notation "s ×ₛ s'" := (prod_st s s') (at level 87, right associativity).
+Notation "s ×ₛ s'" := (prod_st s s') (at level 86, right associativity).
 
 Lemma congr_nat_st : nat_st = nat_st.
 Proof.
