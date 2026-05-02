@@ -17,8 +17,8 @@ Module Core.
   Notation 𝔹ₛ := bool_st.
   Notation 𝕃ₛ := list_st.
   Notation ℙₛ := prop_st.
-  Notation "s →ₛ s'" := (to_st s s') (at level 86, right associativity).
-  Notation "s ×ₛ s'" := (prod_st s s') (at level 86, right associativity).
+  Notation "s →ₛ s'" := (to_st s s') (at level 82, right associativity).
+  Notation "s ×ₛ s'" := (prod_st s s') (at level 81, right associativity).
 
   Lemma congr_nat_st : nat_st = nat_st.
   Proof.
@@ -72,12 +72,12 @@ Module Core.
   | pi1_tm : tm n_tm -> tm n_tm
   | pi2_tm : tm n_tm -> tm n_tm
   | imp_tm : tm n_tm -> tm n_tm -> tm n_tm
-  | forall_tm : tm (S n_tm) -> tm n_tm
+  | forall_tm : st -> tm (S n_tm) -> tm n_tm
   | sort_tm : st -> tm n_tm -> tm n_tm.
   
   Notation "⟦ n ⟧ₛ" := (var_tm _ n).
   Notation ƛ := (lam_tm _).
-  Notation "t @ₛ u" := (app_tm _ t u) (at level 88, left associativity).
+  Notation "t @ₛ u" := (app_tm _ t u) (at level 78, left associativity).
   Notation Zₛ := (z_tm _).
   Notation Sₛ := (s_tm _).
   Notation recℕₛ := (recN_tm _).
@@ -85,13 +85,13 @@ Module Core.
   Notation ffₛ := (ff_tm _).
   Notation rec𝔹ₛ := (recB_tm _).
   Notation "[]ₛ" := (nil_tm _).
-  Notation "t ::ₛ u" := (cons_tm _ t u) (at level 86, right associativity).
+  Notation "t ::ₛ u" := (cons_tm _ t u) (at level 76, right associativity).
   Notation rec𝕃ₛ := (recL_tm _).
   Notation "⟨ t , u ⟩ₛ" := (pair_tm _ t u).
   Notation "π¹ₛ" := (pi1_tm _).
   Notation "π²ₛ" := (pi2_tm _).
-  Notation "φ ⇒ₛ ψ" := (imp_tm _ φ ψ) (at level 89, right associativity).
-  Notation "∀ₛ" := (forall_tm _).
+  Notation "φ ⇒ₛ ψ" := (imp_tm _ φ ψ) (at level 80, right associativity).
+  Notation "∀ₛ" := (forall_tm _) (at level 81).
   Notation 𝕊 := (sort_tm _).
 
   Lemma congr_lam_tm {m_tm : nat} {s0 : tm (S m_tm)} {t0 : tm (S m_tm)}
@@ -200,10 +200,12 @@ Module Core.
              (ap (fun x => imp_tm m_tm t0 x) H1)).
   Qed.
 
-  Lemma congr_forall_tm {m_tm : nat} {s0 : tm (S m_tm)} {t0 : tm (S m_tm)}
-    (H0 : s0 = t0) : forall_tm m_tm s0 = forall_tm m_tm t0.
+  Lemma congr_forall_tm {m_tm : nat} {s0 : st} {s1 : tm (S m_tm)} {t0 : st}
+    {t1 : tm (S m_tm)}
+    (H0 : s0 = t0) (H1 : s1 = t1) : forall_tm m_tm s0 s1 = forall_tm m_tm t0 t1.
   Proof.
-    exact (eq_trans eq_refl (ap (fun x => forall_tm m_tm x) H0)).
+    exact (eq_trans (eq_trans eq_refl (ap (fun x => forall_tm m_tm x s1) H0))
+             (ap (fun x => forall_tm m_tm t0 x) H1)).
   Qed.
 
   Lemma congr_sort_tm {m_tm : nat} {s0 : st} {s1 : tm m_tm} {t0 : st}
@@ -248,7 +250,7 @@ Module Core.
     | pi1_tm _ s0 => pi1_tm n_tm (ren_tm xi_tm s0)
     | pi2_tm _ s0 => pi2_tm n_tm (ren_tm xi_tm s0)
     | imp_tm _ s0 s1 => imp_tm n_tm (ren_tm xi_tm s0) (ren_tm xi_tm s1)
-    | forall_tm _ s0 => forall_tm n_tm (ren_tm (upRen_tm_tm xi_tm) s0)
+    | forall_tm _ s s0 => forall_tm n_tm s (ren_tm (upRen_tm_tm xi_tm) s0)
     | sort_tm _ s0 s1 => sort_tm n_tm s0 (ren_tm xi_tm s1)
     end.
 
@@ -294,7 +296,7 @@ Module Core.
     | pi2_tm _ s0 => pi2_tm n_tm (subst_tm sigma_tm s0)
     | imp_tm _ s0 s1 =>
         imp_tm n_tm (subst_tm sigma_tm s0) (subst_tm sigma_tm s1)
-    | forall_tm _ s0 => forall_tm n_tm (subst_tm (up_tm_tm sigma_tm) s0)
+    | forall_tm _ s s0 => forall_tm n_tm s (subst_tm (up_tm_tm sigma_tm) s0)
     | sort_tm _ s0 s1 => sort_tm n_tm s0 (subst_tm sigma_tm s1)
     end.
 
@@ -353,8 +355,8 @@ Module Core.
     | imp_tm _ s0 s1 =>
         congr_imp_tm (idSubst_tm sigma_tm Eq_tm s0)
           (idSubst_tm sigma_tm Eq_tm s1)
-    | forall_tm _ s0 =>
-        congr_forall_tm
+    | forall_tm _ s s0 =>
+        congr_forall_tm (eq_refl s)
           (idSubst_tm (up_tm_tm sigma_tm) (upId_tm_tm _ Eq_tm) s0)
     | sort_tm _ s0 s1 =>
         congr_sort_tm (eq_refl s0) (idSubst_tm sigma_tm Eq_tm s1)
@@ -416,8 +418,8 @@ Module Core.
     | imp_tm _ s0 s1 =>
         congr_imp_tm (extRen_tm xi_tm zeta_tm Eq_tm s0)
           (extRen_tm xi_tm zeta_tm Eq_tm s1)
-    | forall_tm _ s0 =>
-        congr_forall_tm
+    | forall_tm _ s s0 =>
+        congr_forall_tm (eq_refl s)
           (extRen_tm (upRen_tm_tm xi_tm) (upRen_tm_tm zeta_tm)
              (upExtRen_tm_tm _ _ Eq_tm) s0)
     | sort_tm _ s0 s1 =>
@@ -482,8 +484,8 @@ Module Core.
     | imp_tm _ s0 s1 =>
         congr_imp_tm (ext_tm sigma_tm tau_tm Eq_tm s0)
           (ext_tm sigma_tm tau_tm Eq_tm s1)
-    | forall_tm _ s0 =>
-        congr_forall_tm
+    | forall_tm _ s s0 =>
+        congr_forall_tm (eq_refl s)
           (ext_tm (up_tm_tm sigma_tm) (up_tm_tm tau_tm) (upExt_tm_tm _ _ Eq_tm)
              s0)
     | sort_tm _ s0 s1 =>
@@ -550,8 +552,8 @@ Module Core.
     | imp_tm _ s0 s1 =>
         congr_imp_tm (compRenRen_tm xi_tm zeta_tm rho_tm Eq_tm s0)
           (compRenRen_tm xi_tm zeta_tm rho_tm Eq_tm s1)
-    | forall_tm _ s0 =>
-        congr_forall_tm
+    | forall_tm _ s s0 =>
+        congr_forall_tm (eq_refl s)
           (compRenRen_tm (upRen_tm_tm xi_tm) (upRen_tm_tm zeta_tm)
              (upRen_tm_tm rho_tm) (up_ren_ren _ _ _ Eq_tm) s0)
     | sort_tm _ s0 s1 =>
@@ -630,8 +632,8 @@ Module Core.
     | imp_tm _ s0 s1 =>
         congr_imp_tm (compRenSubst_tm xi_tm tau_tm theta_tm Eq_tm s0)
           (compRenSubst_tm xi_tm tau_tm theta_tm Eq_tm s1)
-    | forall_tm _ s0 =>
-        congr_forall_tm
+    | forall_tm _ s s0 =>
+        congr_forall_tm (eq_refl s)
           (compRenSubst_tm (upRen_tm_tm xi_tm) (up_tm_tm tau_tm)
              (up_tm_tm theta_tm) (up_ren_subst_tm_tm _ _ _ Eq_tm) s0)
     | sort_tm _ s0 s1 =>
@@ -732,8 +734,8 @@ Module Core.
     | imp_tm _ s0 s1 =>
         congr_imp_tm (compSubstRen_tm sigma_tm zeta_tm theta_tm Eq_tm s0)
           (compSubstRen_tm sigma_tm zeta_tm theta_tm Eq_tm s1)
-    | forall_tm _ s0 =>
-        congr_forall_tm
+    | forall_tm _ s s0 =>
+        congr_forall_tm (eq_refl s)
           (compSubstRen_tm (up_tm_tm sigma_tm) (upRen_tm_tm zeta_tm)
              (up_tm_tm theta_tm) (up_subst_ren_tm_tm _ _ _ Eq_tm) s0)
     | sort_tm _ s0 s1 =>
@@ -835,8 +837,8 @@ Module Core.
     | imp_tm _ s0 s1 =>
         congr_imp_tm (compSubstSubst_tm sigma_tm tau_tm theta_tm Eq_tm s0)
           (compSubstSubst_tm sigma_tm tau_tm theta_tm Eq_tm s1)
-    | forall_tm _ s0 =>
-        congr_forall_tm
+    | forall_tm _ s s0 =>
+        congr_forall_tm (eq_refl s)
           (compSubstSubst_tm (up_tm_tm sigma_tm) (up_tm_tm tau_tm)
              (up_tm_tm theta_tm) (up_subst_subst_tm_tm _ _ _ Eq_tm) s0)
     | sort_tm _ s0 s1 =>
@@ -975,8 +977,8 @@ Module Core.
     | imp_tm _ s0 s1 =>
         congr_imp_tm (rinst_inst_tm xi_tm sigma_tm Eq_tm s0)
           (rinst_inst_tm xi_tm sigma_tm Eq_tm s1)
-    | forall_tm _ s0 =>
-        congr_forall_tm
+    | forall_tm _ s s0 =>
+        congr_forall_tm (eq_refl s)
           (rinst_inst_tm (upRen_tm_tm xi_tm) (up_tm_tm sigma_tm)
              (rinstInst_up_tm_tm _ _ Eq_tm) s0)
     | sort_tm _ s0 s1 =>

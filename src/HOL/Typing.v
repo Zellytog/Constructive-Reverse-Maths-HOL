@@ -2,9 +2,9 @@ Require Import CRM.HOL.Base.
 Require Import CRM.HOL.fintype.
 Import CombineNotations SubstNotations.
 
-From Stdlib Require Import PeanoNat.
-From Stdlib Require Import List.
-From Stdlib Require Import Program.Equality.
+Require Import PeanoNat.
+Require Import List.
+Require Import Program.Equality.
 Import ListNotations.
 
 Reserved Notation "Γ ⊢⟨ n ⟩ t ~: s" (at level 87).
@@ -43,7 +43,7 @@ Inductive HOL_typing : forall n : nat, (fin n -> st) -> tm n -> st -> Prop :=
 | typ_imp : forall {n : nat} {Γ : fin n -> st} {φ ψ : tm n},
     Γ ⊢⟨ n ⟩ φ ~: ℙₛ -> Γ ⊢⟨ n ⟩ ψ ~: ℙₛ -> Γ ⊢⟨ n ⟩ φ ⇒ₛ ψ ~: ℙₛ
 | typ_forall : forall {n : nat} {Γ : fin n -> st} {φ : tm (S n)} (s : st),
-    s .: Γ ⊢⟨ S n ⟩ φ ~: ℙₛ -> Γ ⊢⟨ n ⟩ ∀ₛ φ ~: ℙₛ
+    s .: Γ ⊢⟨ S n ⟩ φ ~: ℙₛ -> Γ ⊢⟨ n ⟩ ∀ₛ s φ ~: ℙₛ
 | typ_sort : forall {n : nat} {Γ : fin n -> st} {t : tm n} {s : st},
     Γ ⊢⟨ n ⟩ t ~: s -> Γ ⊢⟨ n ⟩ 𝕊 s t ~: ℙₛ
 where "Γ ⊢⟨ n ⟩ t ~: s" := (HOL_typing n Γ t s).
@@ -61,7 +61,7 @@ Definition HOL_vec (n m : nat) := fin n -> tm m.
 Definition wt_vec (n m : nat) (Γ : HOL_ctx m) (Δ : HOL_ctx n) (v : HOL_vec n m)
   : Prop := forall f : fin n, Γ ⊢⟨ m ⟩ v f ~: Δ f.
 
-Notation "Γ ⊢⟨ m ⟩ v ~:⟨ n , Δ ⟩" := (wt_vec n m Γ Δ v).
+Notation "Γ ⊢⟨ m ⟩ v ~:⟨ n , Δ ⟩" := (wt_vec n m Γ Δ v) (at level 87).
 
 Theorem typ_ren :
   forall (n m : nat) (ξ : fin m -> fin n) (Γ : HOL_ctx n) (Δ : HOL_ctx m)
@@ -82,8 +82,7 @@ Proof.
     apply IHHOL_typing3.
   - apply (typ_proj1 s'). apply IHHOL_typing.
   - apply (typ_proj2 s). apply IHHOL_typing.
-  - apply (typ_forall s). apply IHHOL_typing.
-    intro f; case f; [simpl; apply H | reflexivity].
+  - intro f. case f. simpl. apply H. reflexivity.
 Qed.
 
 Theorem typ_weaken :
