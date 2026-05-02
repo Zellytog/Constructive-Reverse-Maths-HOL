@@ -1,4 +1,2 @@
 -R src CRM
-src/HOL/core.v
-src/HOL/fintype.v
-src/HOL/Base.v
+src/
