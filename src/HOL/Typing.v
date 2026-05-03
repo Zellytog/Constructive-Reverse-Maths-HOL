@@ -61,7 +61,7 @@ Definition HOL_vec (n m : nat) := fin n -> tm m.
 Definition wt_vec (n m : nat) (Γ : HOL_ctx m) (Δ : HOL_ctx n) (v : HOL_vec n m)
   : Prop := forall f : fin n, Γ ⊢⟨ m ⟩ v f ~: Δ f.
 
-Notation "Γ ⊢⟨ m ⟩ v ~:⟨ n , Δ ⟩" := (wt_vec n m Γ Δ v) (at level 87).
+Notation "Γ ⊢⟨ m ⟩ v ~:⟨ n , Δ ⟩" := (wt_vec n m Γ Δ v) (at level 87).  
 
 Theorem typ_ren :
   forall (n m : nat) (ξ : fin m -> fin n) (Γ : HOL_ctx n) (Δ : HOL_ctx m)
@@ -85,11 +85,48 @@ Proof.
   - intro f. case f. simpl. apply H. reflexivity.
 Qed.
 
+Theorem typ_ren_rev :
+  forall (n m : nat) (ξ : fin m -> fin n) (Γ : HOL_ctx n) (Δ : HOL_ctx m)
+         (t : tm m) (s : st),
+    (forall f, (ξ >> Γ) f = Δ f) ->
+    Γ ⊢⟨ n ⟩ ren_tm ξ t ~: s -> Δ ⊢⟨ m ⟩ t ~: s.
+Proof.
+  intros n m ξ Γ Δ t s H H0; revert n ξ Γ Δ s H H0; induction t;
+    intros; asimpl;
+    try (asimpl in H0; dependent destruction H0; try constructor);
+    try (apply (IHt _ _ _ _ _ H H0));
+    try (apply (IHt1 _ _ _ _ _ H H0_));
+    try (apply (IHt2 _ _ _ _ _ H H0_0));
+    try (apply (IHt3 _ _ _ _ _ H H0_1)).
+  - unfold ">>" in H. rewrite H. constructor.
+  - apply (IHt (S n) (var_zero .: ξ >> shift) (s .: Γ)).
+    intro f; case f eqn : e. unfold ">>"; simpl.
+    apply H. reflexivity. apply H0.
+  - apply (typ_app s). apply (IHt1 _ _ _ _ _ H H0_).
+    apply (IHt2 _ _ _ _ _ H H0_0).
+  - apply (typ_recL s'). apply (IHt1 _ _ _ _ _ H H0_).
+    apply (IHt2 _ _ _ _ _ H H0_0). apply (IHt3 _ _ _ _ _ H H0_1).
+  - apply (typ_proj1 s'). apply (IHt _ _ _ _ _ H H0).
+  - apply (typ_proj2 s). apply (IHt _ _ _ _ _ H H0).
+  - apply (IHt (S n) (var_zero .: ξ >> shift) (s .: Γ)).
+    intro f; case f eqn : e. unfold ">>"; simpl.
+    apply H. reflexivity. apply H0.
+Qed.
+
 Theorem typ_weaken :
   forall (n : nat) (Γ : HOL_ctx n) (t : tm n) (s s' : st),
     Γ ⊢⟨ n ⟩ t ~: s -> s' .: Γ ⊢⟨ S n ⟩ ren_tm shift t ~: s.
 Proof.
   intros. apply (typ_ren (S n) n shift (s' .: Γ) Γ t s).
+  intro; unfold ">>"; reflexivity.
+  apply H.
+Qed.
+
+Lemma typ_weaken_rev :
+  forall (n : nat) (Γ : HOL_ctx n) (t : tm n) (s s' : st),
+    s' .: Γ ⊢⟨ S n ⟩ ren_tm shift t ~: s -> Γ ⊢⟨ n ⟩ t ~: s.
+Proof.
+  intros. apply (typ_ren_rev (S n) n shift (s' .: Γ) Γ t s).
   intro; unfold ">>"; reflexivity.
   apply H.
 Qed.

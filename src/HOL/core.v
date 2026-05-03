@@ -20,6 +20,7 @@ Two things are important:
 
 (** *** List Instance *)
 Require Import List.
+Import ListNotations.
 
 Notation "'list_map'" := map.
 

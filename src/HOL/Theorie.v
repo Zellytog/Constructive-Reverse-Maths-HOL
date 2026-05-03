@@ -1,4 +1,4 @@
-From CRM Require Import Base Typing fintype.
+From CRM Require Import Base Typing Reduction fintype.
 Import CombineNotations SubstNotations.
 
 Require Import PeanoNat List Datatypes Program.Equality.
@@ -143,18 +143,22 @@ Proof.
   intros. constructor. apply H. apply typ_false.
 Qed.
 
+Require Import CRM.Prelude.ListCRM.
+
 Definition proof_ctx (n : nat) (Γ : HOL_ctx n) := list (tm n).
 
-Inductive wt_ctx {n : nat} {Γ : HOL_ctx n} : proof_ctx n Γ -> Prop :=
-| wt_nil : wt_ctx nil
-| wt_cons : forall {Ξ : proof_ctx n Γ} {φ : tm n},
-    wt_ctx Ξ -> (Γ ⊢⟨ n ⟩ φ ~: ℙₛ) -> wt_ctx (φ :: Ξ).
+Definition wt_ctx {n : nat} {Γ : HOL_ctx n} (Ξ : proof_ctx n Γ) : Prop :=
+  forall_l (fun Θ => Γ ⊢⟨ n ⟩ Θ ~: ℙₛ) Ξ.
 
 Inductive proving : forall (n : nat) (Γ : HOL_ctx n)
                            (Ξ : proof_ctx n Γ) (φ : tm n), Prop :=
 | ax : forall {n : nat} {Γ : HOL_ctx n}
               {Ξ : proof_ctx n Γ} {φ : tm n},
     wt_ctx Ξ -> In φ Ξ -> proving n Γ Ξ φ
+| transp : forall {n : nat} {Γ : HOL_ctx n}
+                  {Ξ : proof_ctx n Γ} {φ ψ : tm n},
+    proving n Γ Ξ φ -> Γ ⊢⟨ n ⟩ ψ ~: ℙₛ ->
+    φ =ₛ ψ -> proving n Γ Ξ ψ
 | abs : forall {n : nat} {Γ : HOL_ctx n}
                {Ξ : proof_ctx n Γ} {φ ψ : tm n},
     proving n Γ (φ :: Ξ) ψ -> proving n Γ Ξ (φ ⇒ₛ ψ)
@@ -171,31 +175,46 @@ Inductive proving : forall (n : nat) (Γ : HOL_ctx n)
     proving n Γ Ξ (∀ₛ s φ) -> Γ ⊢⟨ n ⟩ t ~: s ->
     proving n Γ Ξ (φ [t .: (fun v => ⟦ v ⟧ₛ)]).
 
+Lemma proving_refl :
+  forall (n : nat) (Γ : HOL_ctx n) (Ξ : proof_ctx n Γ)
+         (t : tm n) (s : st),
+    wt_ctx Ξ -> Γ ⊢⟨ n ⟩ t ~: s -> proving n Γ Ξ (t =⟨ s ⟩ t).
+Proof.
+  intros. unfold eq_tm. apply abs_f.
+  apply abs. apply ax. constructor.
+  apply (typ_app s). constructor. apply typ_weaken; apply H0.
+  apply (map_forall _ _ (ren_tm shift) (fun x => typ_weaken n Γ x ℙₛ (s →ₛ ℙₛ))).
+  apply H. simpl. left; reflexivity.
+Qed.
+
 Lemma wt_proving :
   forall (n : nat) (Γ : HOL_ctx n) (Ξ : proof_ctx n Γ) (φ : tm n),
     proving n Γ Ξ φ -> wt_ctx Ξ /\ (Γ ⊢⟨ n ⟩ φ ~: ℙₛ).
 Proof.
   intros. induction H.
-  - split. apply H. induction Ξ. inversion H0.
-    simpl in H0. destruct H0. subst. inversion H. apply H3.
-    inversion H. apply IHΞ. apply H3. apply H0.
+  - split. apply H.
+    apply (In_forall _ Ξ φ H H0).
+  - destruct IHproving as [wtΞ wtφ].
+    split ; [exact wtΞ | exact H0 ].
   - destruct IHproving as [wtφΞ wtψ].
-    inversion wtφΞ. subst.
-    split; [exact H2 | constructor ; [apply H3 | apply wtψ]].
+    split; [exact (forall_tail _ _ _ wtφΞ) |].
+    constructor. apply (forall_head _ _ _ wtφΞ).
+    apply wtψ.
   - destruct IHproving1 as [wtΞ wtψ].
     dependent destruction wtψ. split. apply wtΞ.
     apply wtψ2.
   - destruct IHproving. split.
-    + clear φ H H1. induction Ξ. constructor.
-      inversion H0. constructor. apply (IHΞ H2).
-      admit.
+    + clear φ H H1.
+      apply (map_forall_rev _ _ (ren_tm shift)
+               (fun x => typ_weaken_rev n Γ x ℙₛ _)) in H0.
+      apply H0.
     + apply (typ_forall s). apply H1.
   - destruct IHproving. split. apply H1.
     apply (comp_typ_vec _ _ _ _ (s .: Γ)).
     asimpl. intro f; case f eqn:e.
     asimpl. apply typ_var. asimpl. apply H0.
     dependent destruction H2. apply H2.
-Admitted.
+Qed.
 
 Lemma ren_proof :
   forall (n m : nat) (Γ : HOL_ctx n) (Δ : HOL_ctx m)
@@ -203,21 +222,78 @@ Lemma ren_proof :
     (forall f, (ξ >> Δ) f = Γ f) ->
     proving n Γ Ξ φ -> proving m Δ (map (ren_tm ξ) Ξ) (ren_tm ξ φ).
 Proof.
-  intros. induction H0.
-  - induction Ξ.
-    + inversion H1.
-    + inversion H0; subst. specialize (IHΞ H4).
-      destruct H1.
-      ++ subst. simpl. constructor.
-         constructor. admit.
-         apply (typ_ren m n ξ Δ Γ φ ℙₛ H H5). constructor.
-         reflexivity.
-      ++ specialize (IHΞ H1). simpl. constructor.
-         admit. admit.
+  intros; revert m Δ ξ H; induction H0; intros; simpl.
+  - apply ax.
+    apply (map_forall _ _ (ren_tm ξ)
+             (fun x => typ_ren m n ξ Δ Γ x _ H1)).
+    apply H. apply (in_map (ren_tm ξ) Ξ φ H0).
+  -
+  - simpl; apply abs. apply IHproving. apply H.
+  - simpl. specialize (IHproving1 _ _ _ H).
+    specialize (IHproving2 _ _ _ H).
+    apply (app IHproving1 IHproving2).
+  - asimpl. apply abs_f.
+    specialize (IHproving _ (s .: Δ) (var_zero .: ξ >> shift)).
+    asimpl in IHproving.
+    rewrite map_map in IHproving. asimpl in IHproving.
+    rewrite map_map. asimpl.
+    rewrite (map_ext
+               (ren_tm shift >> ren_tm (var_zero .: ξ >> shift))
+               (ren_tm ξ >> ren_tm shift)) in IHproving.
+    apply IHproving.
+    intro f. unfold ">>". asimpl.
+    case f eqn : e. simpl. asimpl. unfold ">>"; simpl.
+    apply H. unfold ">>"; simpl. reflexivity.
+    asimpl. reflexivity.
+  - simpl. asimpl.
+    specialize (IHproving m Δ ξ H1).
+    asimpl in IHproving.
+    assert (Δ ⊢⟨ m ⟩ ren_tm ξ t ~: s).
+    apply (typ_ren _ _ _ _ _ _ _ H1 H).
+    specialize (app_f IHproving H2); intro.
+    asimpl in H3. apply H3.
+Qed.
 
-Theorem typ_ren :
-  forall (n m : nat) (ξ : fin m -> fin n) (Γ : HOL_ctx n) (Δ : HOL_ctx m)
-         (t : tm m) (s : st),
-    (forall f, (ξ >> Γ) f = Δ f) ->
-    Δ ⊢⟨ m ⟩ t ~: s -> Γ ⊢⟨ n ⟩ ren_tm ξ t ~: s.
-    proving n Γ Ξ φ ->
+Lemma subst_proof :
+  forall (n m : nat) (v : HOL_vec n m) (Γ : HOL_ctx m) (Δ : HOL_ctx n)
+         (Ξ : proof_ctx n Δ) (φ : tm n),
+    Γ ⊢⟨ m ⟩ v ~:⟨ n , Δ ⟩ -> proving n Δ Ξ φ ->
+    proving m Γ (map (subst_tm v) Ξ) (φ [ v ]).
+Proof.
+  intros n m v Γ Δ Ξ φ Hv Hφ; revert m v Γ Hv; induction Hφ; intros; simpl.
+  - apply ax.
+    apply (map_forall (fun x => Γ  ⊢⟨ n ⟩ x ~: ℙₛ)
+             (fun x => Γ0 ⊢⟨ m ⟩ x ~: ℙₛ)).
+    intro a. apply comp_typ_vec.
+    apply Hv. apply H.
+    apply (in_map (subst_tm v) Ξ φ H0).
+  - asimpl. apply abs. apply IHHφ.
+    apply Hv.
+  - specialize (IHHφ1 _ _ _ Hv).
+    specialize (IHHφ2 _ _ _ Hv).
+    apply (app IHHφ1 IHHφ2).
+  - asimpl. apply abs_f.
+    specialize (IHHφ (S m) ((S m)__tm var_zero .: v >> ren_tm shift)
+                  (s .: Γ0)).
+    asimpl in IHHφ.
+    assert (s .: Γ0 ⊢⟨ S m ⟩ (S m)__tm var_zero .: v >> ren_tm shift ~:⟨ S n, s .: Γ ⟩).
+    intro f. case f eqn : e.
+    asimpl. unfold ">>". apply typ_weaken. apply Hv.
+    constructor.
+    specialize (IHHφ H).
+    assert (map (subst_tm ((S m)__tm var_zero .: v >> ren_tm shift)) (map (ren_tm shift) Ξ) =
+              (map (ren_tm shift) (map (subst_tm v) Ξ))).
+    rewrite map_map. asimpl. unfold ">>". rewrite map_map. apply map_ext.
+    intro f. asimpl. reflexivity.
+    rewrite <- H0. apply IHHφ.
+  - asimpl. specialize (IHHφ m v Γ0 Hv).
+    asimpl in IHHφ.
+    apply (@app_f _ _ _ _ (t [v])) in IHHφ.
+    asimpl in IHHφ.
+    assert (φ [t[v] .: v >> (ren_tm shift >> subst_tm (t[v] .: m __tm))] = φ[t[v] .: v]).
+    apply ext_tm.
+    intro f; case f eqn : e.
+    asimpl. reflexivity. reflexivity.
+    apply (eq_rec _ (proving m Γ0 (map (subst_tm v) Ξ)) IHHφ _ H0).
+    apply (comp_typ_vec _ _ _ _ _ _ _ Hv H).
+Qed.
