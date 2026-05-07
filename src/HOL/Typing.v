@@ -20,7 +20,7 @@ Inductive HOL_typing : forall n : nat, (fin n -> st) -> tm n -> st -> Prop :=
 | typ_s : forall {n : nat} {Γ : fin n -> st} {t : tm n},
     Γ ⊢⟨ n ⟩ t ~: ℕₛ -> Γ ⊢⟨ n ⟩ Sₛ t ~: ℕₛ
 | typ_recN : forall {n : nat} {Γ : fin n -> st} {t u v : tm n} {s : st},
-    Γ ⊢⟨ n ⟩ t ~: s -> Γ ⊢⟨ n ⟩ u ~: s →ₛ ℕₛ →ₛ s -> Γ ⊢⟨ n ⟩ v ~: ℕₛ ->
+    Γ ⊢⟨ n ⟩ t ~: s -> Γ ⊢⟨ n ⟩ u ~: ℕₛ →ₛ s →ₛ s -> Γ ⊢⟨ n ⟩ v ~: ℕₛ ->
     Γ ⊢⟨ n ⟩ recℕₛ t u v ~: s
 | typ_tt : forall {n : nat} {Γ : fin n -> st}, Γ ⊢⟨ n ⟩ ttₛ ~: 𝔹ₛ
 | typ_ff : forall {n : nat} {Γ : fin n -> st}, Γ ⊢⟨ n ⟩ ffₛ ~: 𝔹ₛ
@@ -32,7 +32,7 @@ Inductive HOL_typing : forall n : nat, (fin n -> st) -> tm n -> st -> Prop :=
     Γ ⊢⟨ n ⟩ t ~: s -> Γ ⊢⟨ n ⟩ u ~: 𝕃ₛ s -> Γ ⊢⟨ n ⟩ t ::ₛ u ~: 𝕃ₛ s
 | typ_recL : forall {n : nat} {Γ : fin n -> st} {t u v : tm n} {s : st}
                     (s' : st),
-    Γ ⊢⟨ n ⟩ t ~: s -> Γ ⊢⟨ n ⟩ u ~: s →ₛ s' →ₛ 𝕃ₛ s' →ₛ s ->
+    Γ ⊢⟨ n ⟩ t ~: s -> Γ ⊢⟨ n ⟩ u ~: s' →ₛ 𝕃ₛ s' →ₛ s →ₛ s ->
     Γ ⊢⟨ n ⟩ v ~: 𝕃ₛ s' -> Γ ⊢⟨ n ⟩ rec𝕃ₛ t u v ~: s
 | typ_pair : forall {n : nat} {Γ : fin n -> st} {t u : tm n} {s s' : st},
     Γ ⊢⟨ n ⟩ t ~: s -> Γ ⊢⟨ n ⟩ u ~: s' -> Γ ⊢⟨ n ⟩ ⟨ t, u ⟩ₛ ~: s ×ₛ s'

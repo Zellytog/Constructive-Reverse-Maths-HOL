@@ -124,7 +124,7 @@ Inductive rts_closure (R : rewriting) : rewriting :=
                    (u : tm n) {v : tm n},
     rts_closure R n t u -> R n u v ->
     rts_closure R n t v
-| rts_sym : forall {n : nat} {t : tm n}
+| rts_rev_add : forall {n : nat} {t : tm n}
                    (u : tm n) {v : tm n},
     rts_closure R n t u -> R n v u ->
     rts_closure R n t v.
@@ -133,28 +133,28 @@ Notation "R >+" := (t_closure R) (at level 65).
 Notation "R >*" := (rt_closure R) (at level 65).
 Notation "R >~" := (rts_closure R) (at level 65).
 
-Lemma closure_R_in_t :
+Lemma R_in_t :
  forall (R : rewriting) {n : nat}
         {t u : tm n}, R n t u -> R >+ n t u.
 Proof.
   intros. apply t_one. apply H.
 Qed.
 
-Lemma closure_R_in_rt :
+Lemma R_in_rt :
   forall (R : rewriting) {n : nat}
          {t u : tm n}, R n t u -> R >* n t u.
 Proof.
   intros. apply (rt_add _ _ (rt_refl R t) H).
 Qed.
 
-Lemma closure_R_in_rts :
+Lemma R_in_rts :
   forall (R : rewriting) {n : nat}
          {t u : tm n}, R n t u -> R >~ n t u.
 Proof.
   intros. apply (rts_add _ _ (rts_refl R t) H).
 Qed.
 
-Lemma closure_t_trans :
+Lemma t_trans :
   forall (R : rewriting) {n : nat}
          {t : tm n} (u : tm n) {v : tm n},
     R >+ n t u -> R >+ n u v -> R >+ n t v.
@@ -163,7 +163,7 @@ Proof.
   apply (t_add R u). apply IHt_closure. apply H. apply H1.
 Qed.
 
-Lemma closure_rt_trans :
+Lemma rt_trans :
   forall (R : rewriting) {n : nat}
          {t : tm n} (u : tm n) {v : tm n},
     R >* n t u -> R >* n u v -> R >* n t v.
@@ -172,28 +172,30 @@ Proof.
   apply IHrt_closure. apply H. apply H1.
 Qed.
 
-Lemma closure_rts_trans :
+Lemma rts_trans :
   forall (R : rewriting) {n : nat}
          {t : tm n} (u : tm n) {v : tm n},
     R >~ n t u -> R >~ n u v -> R >~ n t v.
 Proof.
   intros. induction H0. apply H. apply (rts_add R u).
-  apply IHrts_closure. apply H. apply H1. apply (rts_sym R u).
+  apply IHrts_closure. apply H. apply H1.
+  apply (rts_rev_add R u).
   apply IHrts_closure. apply H. apply H1.
 Qed.
 
-Lemma closure_rts_sym :
+Lemma rts_sym :
   forall (R : rewriting) {n : nat}
          {t u : tm n}, R >~ n t u -> R >~ n u t.
 Proof.
   intros. induction H. apply rts_refl.
-  apply (closure_rts_trans R u).
-  apply (rts_sym _ _ (rts_refl R v) H0). apply IHrts_closure.
-  apply (closure_rts_trans R u).
+  apply (rts_trans R u).
+  apply (rts_rev_add _ _ (rts_refl R v) H0).
+  apply IHrts_closure.
+  apply (rts_trans R u).
   apply (rts_add _ _ (rts_refl R v) H0). apply IHrts_closure.
 Qed.
 
-Lemma closure_t_in_rt :
+Lemma t_in_rt :
   forall (R : rewriting) {n : nat} {t u : tm n},
     R >+ n t u -> R >* n t u.
 Proof.
@@ -201,7 +203,7 @@ Proof.
   apply (rt_add R _ IHt_closure H0).
 Qed.
 
-Lemma closure_t_in_rts :
+Lemma t_in_rts :
   forall (R : rewriting) {n : nat} {t u : tm n},
     R >+ n t u -> R >~ n t u.
 Proof.
@@ -209,7 +211,7 @@ Proof.
   apply (rts_add R _ IHt_closure H0).
 Qed.
 
-Lemma closure_rt_in_rts :
+Lemma rt_in_rts :
   forall (R : rewriting) {n : nat} {t u : tm n},
     R >* n t u -> R >~ n t u.
 Proof.
@@ -268,7 +270,7 @@ Proof.
       specialize (HR _ _ _ _ (conj H0 uz)).
       destruct HR as [x [vx zx]].
       exists x. split.
-      apply vx. apply (closure_rt_trans _ x).
+      apply vx. apply (rt_trans _ x).
       apply (rt_add R z). apply wz. apply zx.
       apply rt_refl.
     + destruct H0 as [x [yx wx]].
@@ -285,19 +287,18 @@ Proof.
   induction H0. exists t. split; apply rt_refl.
   destruct IHrts_closure. destruct H2. unfold Confluence in H.
   specialize (H n u v x).
-  assert (R >* n u v /\ R >* n u x). split. apply closure_R_in_rt.
+  assert (R >* n u v /\ R >* n u x). split. apply R_in_rt.
   apply H1. apply H3.
   specialize (H H4). destruct H. destruct H. exists x0.
   split; try apply H.
-  apply (closure_rt_trans _ _ H2 H5). destruct IHrts_closure.
+  apply (rt_trans _ _ H2 H5). destruct IHrts_closure.
   destruct H2. exists x.
   split; try apply H2.
-  apply (closure_rt_trans R u); try apply H3.
-  apply closure_R_in_rt. apply H1.
+  apply (rt_trans R u); try apply H3.
+  apply R_in_rt. apply H1.
   unfold Confluence. intros. unfold Church_Rosser_prop in H.
-  specialize (H n u v). apply H. apply (closure_rts_trans R t).
-  apply closure_rts_sym.
-  apply closure_rt_in_rts. apply H0. apply closure_rt_in_rts.
+  specialize (H n u v). apply H. apply (rts_trans R t).
+  apply rts_sym. apply rt_in_rts. apply H0. apply rt_in_rts.
   apply H0.
 Qed.
 
@@ -318,5 +319,235 @@ Proof.
 Qed.
 
 Definition βeq := (βred >~ ).
+Definition βred_st := (βred >* ).
 
-Notation "t =ₛ u" := (βeq t u) (at level 87).
+Notation "t ▷ₛ u" := (βred _ t u) (at level 87).
+Notation "t ▷*ₛ u" := (βred_st _ t u) (at level 87).
+Notation "t =ₛ u" := (βeq _ t u) (at level 87).
+
+Lemma ren_reduc :
+  forall (n m : nat) (t u : tm n) (ξ : fin n -> fin m),
+    reduc n t u -> reduc m (ren_tm ξ t) (ren_tm ξ u).
+Proof.
+  intros; revert ξ; induction H; intros; try (asimpl; constructor; fail).
+  - asimpl.
+    assert (subst_tm ((ren_tm ξ u) .: var_tm) (ren_tm (var_zero .: ξ >> shift) t) =
+              subst_tm (ren_tm ξ u .: ξ >> m __tm) t).
+    asimpl. reflexivity. rewrite <- H. constructor.
+Qed.
+
+Lemma ren_red :
+  forall (n m : nat) (t u : tm n) (ξ : fin n -> fin m),
+    t ▷ₛ u -> ren_tm ξ t ▷ₛ ren_tm ξ u.
+Proof.
+  intros; revert m ξ; induction H; intros.
+  - apply incl_R. apply (ren_reduc _ _ t u ξ H).
+  - asimpl. apply sub_lam. apply IHto_compat.
+  - asimpl. apply sub_app_1. apply IHto_compat.
+  - asimpl. apply sub_app_2. apply IHto_compat.
+  - asimpl. apply sub_S. apply IHto_compat.
+  - asimpl. apply sub_recN_1. apply IHto_compat.
+  - asimpl. apply sub_recN_2. apply IHto_compat.
+  - asimpl. apply sub_recN_3. apply IHto_compat.
+  - asimpl. apply sub_recB_1. apply IHto_compat.
+  - asimpl. apply sub_recB_2. apply IHto_compat.
+  - asimpl. apply sub_recB_3. apply IHto_compat.
+  - asimpl. apply sub_cons_1. apply IHto_compat.
+  - asimpl. apply sub_cons_2. apply IHto_compat.
+  - asimpl. apply sub_recL_1. apply IHto_compat.
+  - asimpl. apply sub_recL_2. apply IHto_compat.
+  - asimpl. apply sub_recL_3. apply IHto_compat.
+  - asimpl. apply sub_pair_1. apply IHto_compat.
+  - asimpl. apply sub_pair_2. apply IHto_compat.
+  - asimpl. apply sub_proj1. apply IHto_compat.
+  - asimpl. apply sub_proj2. apply IHto_compat.
+  - asimpl. apply sub_imp_1. apply IHto_compat.
+  - asimpl. apply sub_imp_2. apply IHto_compat.
+  - asimpl. apply sub_forall. apply IHto_compat.
+  - asimpl. apply sub_sort. apply IHto_compat.
+Qed.
+
+Lemma subst_reduc :
+  forall (n m : nat) (t u : tm n) (v : fin n -> tm m),
+    reduc n t u -> reduc m (subst_tm v t) (subst_tm v u).
+Proof.
+  intros. induction H; try (asimpl; constructor; fail).
+  asimpl.
+  assert ((subst_tm ((subst_tm v u) .: v) t) =
+            subst_tm ((subst_tm v u) .: var_tm)
+              (subst_tm ((S m) __tm var_zero .: v >> ren_tm shift) t)).
+  asimpl. unfold ">>". asimpl.
+  unfold ">>". asimpl. reflexivity.
+  rewrite H. constructor.
+Qed.
+
+Lemma subst_red :
+  forall (n m : nat) (t u : tm n) (v : fin n -> tm m),
+    t ▷ₛ u -> subst_tm v t ▷ₛ subst_tm v u.
+Proof.
+  intros; revert m v; induction H; intros.
+  - apply incl_R. apply subst_reduc. apply H.
+  - asimpl. apply sub_lam. apply IHto_compat.
+  - asimpl. apply sub_app_1. apply IHto_compat.
+  - asimpl. apply sub_app_2. apply IHto_compat.
+  - asimpl. apply sub_S. apply IHto_compat.
+  - asimpl. apply sub_recN_1. apply IHto_compat.
+  - asimpl. apply sub_recN_2. apply IHto_compat.
+  - asimpl. apply sub_recN_3. apply IHto_compat.
+  - asimpl. apply sub_recB_1. apply IHto_compat.
+  - asimpl. apply sub_recB_2. apply IHto_compat.
+  - asimpl. apply sub_recB_3. apply IHto_compat.
+  - asimpl. apply sub_cons_1. apply IHto_compat.
+  - asimpl. apply sub_cons_2. apply IHto_compat.
+  - asimpl. apply sub_recL_1. apply IHto_compat.
+  - asimpl. apply sub_recL_2. apply IHto_compat.
+  - asimpl. apply sub_recL_3. apply IHto_compat.
+  - asimpl. apply sub_pair_1. apply IHto_compat.
+  - asimpl. apply sub_pair_2. apply IHto_compat.
+  - asimpl. apply sub_proj1. apply IHto_compat.
+  - asimpl. apply sub_proj2. apply IHto_compat.
+  - asimpl. apply sub_imp_1. apply IHto_compat.
+  - asimpl. apply sub_imp_2. apply IHto_compat.
+  - asimpl. apply sub_forall. apply IHto_compat.
+  - asimpl. apply sub_sort. apply IHto_compat.
+Qed.
+
+Lemma ren_red_st :
+  forall (n m : nat) (t u : tm n) (ξ : fin n -> fin m),
+    t ▷*ₛ u -> ren_tm ξ t ▷*ₛ ren_tm ξ u.
+Proof.
+  intros.
+  induction H. apply rt_refl.
+  apply (rt_add _ (ren_tm ξ u)).
+  apply IHrt_closure. apply ren_red.
+  apply H0.
+Qed.
+
+Lemma subst_red_st :
+  forall (n m : nat) (t u : tm n) (v : fin n -> tm m),
+    t ▷*ₛ u -> subst_tm v t ▷*ₛ subst_tm v u.
+Proof.
+  intros.
+  induction H. apply rt_refl.
+  apply (rt_add _ (subst_tm v u)).
+  apply IHrt_closure. apply subst_red.
+  apply H0.
+Qed.
+
+Lemma ren_βeq :
+  forall (n m : nat) (t u : tm n) (ξ : fin n -> fin m),
+    t =ₛ u -> ren_tm ξ t =ₛ ren_tm ξ u.
+Proof.
+  intros.
+  induction H. apply rts_refl.
+  apply (rts_add _ (ren_tm ξ u)).
+  apply IHrts_closure. apply ren_red.
+  apply H0.
+  apply (rts_rev_add _ (ren_tm ξ u)).
+  apply IHrts_closure. apply ren_red.
+  apply H0.
+Qed.
+
+Lemma subst_βeq :
+  forall (n m : nat) (t u : tm n) (v : fin n -> tm m),
+    t =ₛ u -> subst_tm v t =ₛ subst_tm v u.
+Proof.
+  intros.
+  induction H. apply rts_refl.
+  apply (rts_add _ (subst_tm v u)).
+  apply IHrts_closure. apply subst_red.
+  apply H0.
+  apply (rts_rev_add _ (subst_tm v u)).
+  apply IHrts_closure. apply subst_red.
+  apply H0.
+Qed.
+
+Record is_compat (R : rewriting) : Prop :=
+  { comp_lam : forall {n : nat} {t u : tm (S n)},
+      R (S n) t u -> R n (ƛ t) (ƛ u)
+  ; comp_app_1 : forall {n : nat} {t u v : tm n},
+      R n t u -> R n (t @ₛ v) (u @ₛ v)
+  ; comp_app_2 : forall {n : nat} {t u v : tm n},
+      R n u v -> R n (t @ₛ u) (t @ₛ v)
+  ; comp_S : forall {n : nat} {t u : tm n},
+      R n t u -> R n (Sₛ t) (Sₛ u)
+  ; comp_recN_1 : forall {n : nat} {t u v w : tm n},
+      R n t u -> R n (recℕₛ t v w) (recℕₛ u v w)
+  ; comp_recN_2 : forall {n : nat} {t u v w : tm n},
+    R n u v -> R n (recℕₛ t u w) (recℕₛ t v w)
+  ; comp_recN_3 : forall {n : nat} {t u v w : tm n},
+    R n v w -> R n (recℕₛ t u v) (recℕₛ t u w)
+  ; comp_recB_1 : forall {n : nat} {t u v w : tm n},
+    R n t u -> R n (rec𝔹ₛ t v w) (rec𝔹ₛ u v w)
+  ; comp_recB_2 : forall {n : nat} {t u v w : tm n},
+    R n u v -> R n (rec𝔹ₛ t u w) (rec𝔹ₛ t v w)
+  ; comp_recB_3 : forall {n : nat} {t u v w : tm n},
+    R n v w -> R n (rec𝔹ₛ t u v) (rec𝔹ₛ t u w)
+  ; comp_cons_1 : forall {n : nat} {t u v : tm n},
+    R n t u -> R n (t ::ₛ v) (u ::ₛ v)
+  ; comp_cons_2 : forall {n : nat} {t u v : tm n},
+    R n u v -> R n (t ::ₛ u) (t ::ₛ v)
+  ; comp_recL_1 : forall {n : nat} {t u v w : tm n},
+    R n t u -> R n (rec𝕃ₛ t v w) (rec𝕃ₛ u v w)
+  ; comp_recL_2 : forall {n : nat} {t u v w : tm n},
+    R n u v -> R n (rec𝕃ₛ t u w) (rec𝕃ₛ t v w)
+  ; comp_recL_3 : forall {n : nat} {t u v w : tm n},
+    R n v w -> R n (rec𝕃ₛ t u v) (rec𝕃ₛ t u w)
+  ; comp_pair_1 : forall {n : nat} {t u v : tm n},
+    R n t u -> R n ⟨ t, v ⟩ₛ ⟨ u, v ⟩ₛ
+  ; comp_pair_2 : forall {n : nat} {t u v : tm n},
+    R n u v -> R n ⟨ t, u ⟩ₛ ⟨ t, v ⟩ₛ
+  ; comp_proj1 : forall {n : nat} {t u : tm n},
+      R n t u -> R n (π¹ₛ t) (π¹ₛ u)
+  ; comp_proj2 : forall {n : nat} {t u : tm n},
+      R n t u -> R n (π²ₛ t) (π²ₛ u)
+  ; comp_imp_1 : forall {n : nat} {t u v : tm n},
+      R n t u -> R n (t ⇒ₛ v) (u ⇒ₛ v)
+  ; comp_imp_2 : forall {n : nat} {t u v : tm n},
+      R n u v -> R n (t ⇒ₛ u) (t ⇒ₛ v)
+  ; comp_forall : forall {n : nat} {s : st} {t u : tm (S n)},
+      R (S n) t u -> R n (∀ₛ s t) (∀ₛ s u)
+  ; comp_sort : forall {n : nat} {t u : tm n} {s : st},
+      R n t u -> R n (𝕊 s t) (𝕊 s u)
+  }.
+
+Lemma is_comp_to_comp : forall (R : rewriting),
+    is_compat (to_compat R).
+Proof.
+  intro. split.
+  apply sub_lam. apply sub_app_1. apply sub_app_2.
+  apply sub_S. apply sub_recN_1. apply sub_recN_2. apply sub_recN_3.
+  apply sub_recB_1. apply sub_recB_2. apply sub_recB_3.
+  apply sub_cons_1. apply sub_cons_2.
+  apply sub_recL_1. apply sub_recL_2. apply sub_recL_3.
+  apply sub_pair_1. apply sub_pair_2.
+  apply sub_proj1. apply sub_proj2.
+  apply sub_imp_1. apply sub_imp_2.
+  apply sub_forall. apply sub_sort.
+Qed.
+
+Lemma t_compat :
+  forall (R : rewriting),
+    is_compat R -> is_compat (R >+ ).
+Proof.
+  intros. split.
+  intros.
+Admitted.
+
+Lemma rt_compat :
+  forall (R : rewriting),
+    is_compat R -> is_compat (R >* ).
+Proof.
+Admitted.
+
+Lemma rts_compat :
+  forall (R : rewriting),
+    is_compat R -> is_compat (R >~ ).
+Proof.
+Admitted.
+
+Lemma βeq_compat :
+  is_compat βeq.
+Proof.
+  apply rts_compat. apply is_comp_to_comp.
+Qed.

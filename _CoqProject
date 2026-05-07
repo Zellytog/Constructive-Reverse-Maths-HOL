@@ -6,4 +6,4 @@ src/HOL/Base.v
 src/HOL/Typing.v
 src/HOL/Reduction.v
 src/HOL/Theorie.v
-src/EF
+src/HOL/Logical.v
