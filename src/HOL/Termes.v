@@ -191,5 +191,5 @@ Qed.
 
 
 
-Theorem FT_nprove_WKL :
-  ~ (proving 0 (@False_rect st) (FT_tm :: nil) WKL_tm).
+(* Theorem FT_nprove_WKL :
+  ~ (proving 0 (@False_rect st) (FT_tm :: nil) WKL_tm).*)

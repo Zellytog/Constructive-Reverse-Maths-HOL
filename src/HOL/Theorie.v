@@ -63,9 +63,11 @@ Inductive proving : forall (n : nat) (Γ : HOL_ctx n)
              ((S (S n)) __tm var_zero))))) ->
     proving n Γ Ξ (∀ₛ (𝕃ₛ s) (ren_tm shift φ @ₛ ((S n) __tm var_zero))).
 
+Notation "Γ ∣ Ξ ⊢| n | φ" := (proving n Γ Ξ φ) (at level 87).
+
 Lemma wt_proving :
   forall (n : nat) (Γ : HOL_ctx n) (Ξ : proof_ctx n Γ) (φ : tm n),
-    proving n Γ Ξ φ -> wt_ctx Ξ /\ (Γ ⊢⟨ n ⟩ φ ~: ℙₛ).
+    Γ ∣ Ξ ⊢| n | φ -> wt_ctx Ξ /\ (Γ ⊢⟨ n ⟩ φ ~: ℙₛ).
 Proof.
   intros. induction H.
   - split. apply H.
@@ -123,7 +125,7 @@ Lemma ren_proof :
   forall (n m : nat) (Γ : HOL_ctx n) (Δ : HOL_ctx m)
          (Ξ : proof_ctx n Γ) (φ : tm n) (ξ : fin n -> fin m),
     (forall f, (ξ >> Δ) f = Γ f) ->
-    proving n Γ Ξ φ -> proving m Δ (map (ren_tm ξ) Ξ) (ren_tm ξ φ).
+    Γ ∣ Ξ ⊢| n | φ -> Δ ∣ map (ren_tm ξ) Ξ ⊢| m | ren_tm ξ φ.
 Proof.
   intros; revert m Δ ξ H; induction H0; intros; simpl.
   - apply pr_ax.
@@ -185,8 +187,8 @@ Qed.
 Lemma subst_proof :
   forall (n m : nat) (v : HOL_vec n m) (Γ : HOL_ctx m) (Δ : HOL_ctx n)
          (Ξ : proof_ctx n Δ) (φ : tm n),
-    Γ ⊢⟨ m ⟩ v ~:⟨ n , Δ ⟩ -> proving n Δ Ξ φ ->
-    proving m Γ (map (subst_tm v) Ξ) (φ [ v ]).
+    Γ ⊢⟨ m ⟩ v ~:⟨ n , Δ ⟩ -> Δ ∣ Ξ ⊢| n | φ ->
+    Γ ∣ map (subst_tm v) Ξ ⊢| m | φ [ v ].
 Proof.
   intros n m v Γ Δ Ξ φ Hv Hφ; revert m v Γ Hv; induction Hφ; intros; simpl.
   - apply pr_ax.
@@ -258,8 +260,8 @@ Qed.
 Lemma weaken_proof :
   forall (n : nat) (Γ : HOL_ctx n)
          (Ξ Θ : proof_ctx n Γ) (φ : tm n),
-    proving n Γ Ξ φ -> incl Ξ Θ ->
-    wt_ctx Θ -> proving n Γ Θ φ.
+    Γ ∣ Ξ ⊢| n | φ -> incl Ξ Θ ->
+    wt_ctx Θ -> Γ ∣ Θ ⊢| n | φ.
 Proof.
   intros; revert Θ H0 H1; induction H; intros.
   - apply pr_ax. apply H2. apply H1.
@@ -301,8 +303,8 @@ Qed.
 Lemma weaken_proof_1 :
   forall (n : nat) (Γ : HOL_ctx n)
          (Ξ : proof_ctx n Γ) (φ ψ : tm n),
-    proving n Γ Ξ φ -> Γ ⊢⟨ n ⟩ ψ ~: ℙₛ ->
-    proving n Γ (ψ :: Ξ) φ.
+    Γ ∣ Ξ ⊢| n | φ -> Γ ⊢⟨ n ⟩ ψ ~: ℙₛ ->
+    Γ ∣ ψ :: Ξ ⊢| n | φ.
 Proof.
   intros.
   apply (weaken_proof n Γ Ξ (ψ :: Ξ)).
