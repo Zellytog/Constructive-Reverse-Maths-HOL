@@ -179,9 +179,9 @@ Require Import PeanoNat List Program.Equality.
 (*Section LogicLemma.*)
 
   Lemma proving_refl :
-    forall {n : nat} {Γ : HOL_ctx n} {Ξ : proof_ctx n Γ}
+    forall {n : nat} {Γ : HOL_ctx n} {Ξ : proof_ctx n}
            {t : tm n} {s : st},
-      wt_ctx Ξ -> Γ ⊢⟨ n ⟩ t ~: s -> Γ ∣ Ξ ⊢| n | t =⟨ s ⟩ t.
+      wt_ctx Γ Ξ -> Γ ⊢⟨ n ⟩ t ~: s -> Γ ∣ Ξ ⊢| n | t =⟨ s ⟩ t.
   Proof.
     intros. unfold eq_tm. apply pr_abs_f.
     apply pr_abs. apply pr_ax. constructor.
@@ -191,12 +191,10 @@ Require Import PeanoNat List Program.Equality.
   Qed.
 
   Lemma eq_elim :
-    forall {n : nat} {Γ : HOL_ctx n} {Ξ : proof_ctx n Γ}
+    forall {n : nat} {Γ : HOL_ctx n} {Ξ : proof_ctx n}
            {t : tm n} {u φ : tm n} {s : st},
-      Γ ∣ Ξ ⊢| n | t =⟨ s ⟩ u ->
-                   Γ ⊢⟨ n ⟩ φ ~: s →ₛ ℙₛ ->
-                   Γ ∣ Ξ ⊢| n | φ @ₛ t ->
-                                Γ ∣ Ξ ⊢| n | φ @ₛ u.
+      Γ ∣ Ξ ⊢| n | t =⟨ s ⟩ u -> Γ ⊢⟨ n ⟩ φ ~: s →ₛ ℙₛ ->
+      Γ ∣ Ξ ⊢| n | φ @ₛ t -> Γ ∣ Ξ ⊢| n | φ @ₛ u.
   Proof.
     intros.
     apply (pr_app_f φ (s →ₛ ℙₛ)) in H.
@@ -206,10 +204,10 @@ Require Import PeanoNat List Program.Equality.
   Qed.
 
   Lemma def_eq_to_eq :
-    forall {n : nat} {Γ : HOL_ctx n} {Ξ : proof_ctx n Γ}
+    forall {n : nat} {Γ : HOL_ctx n} {Ξ : proof_ctx n}
            {t u : tm n} {s : st},
       Γ ⊢⟨ n ⟩ t ~: s -> Γ ⊢⟨ n ⟩ u ~: s ->
-      t =ₛ u -> wt_ctx Ξ ->
+      t =ₛ u -> wt_ctx Γ Ξ ->
       Γ ∣ Ξ ⊢| n | t =⟨ s ⟩ u.
   Proof.
     intros. apply (pr_transp (t =⟨ s ⟩ t)).
@@ -222,7 +220,7 @@ Require Import PeanoNat List Program.Equality.
   Qed.
 
   Lemma pr_pair :
-    forall {n : nat} {Γ : HOL_ctx n} {Ξ : proof_ctx n Γ}
+    forall {n : nat} {Γ : HOL_ctx n} {Ξ : proof_ctx n}
            {φ ψ : tm n},
       Γ ∣ Ξ ⊢| n | φ -> Γ ∣ Ξ ⊢| n | ψ ->
       Γ ∣ Ξ ⊢| n | φ ∧ₛ ψ.
@@ -241,17 +239,17 @@ Require Import PeanoNat List Program.Equality.
     apply (pr_app (ren_tm shift φ)).
     repeat constructor; try assumption.
     apply weaken_proof_1.
-    apply ren_proof. intro f; reflexivity.
+    eapply ren_proof. intro f; reflexivity.
     apply H.
     repeat constructor; try assumption.
     apply weaken_proof_1.
-    apply ren_proof. intro f; reflexivity.
+    eapply ren_proof. intro f; reflexivity.
     apply H0.
     repeat constructor; assumption.
   Qed.
 
   Lemma pr_proj1 :
-    forall {n : nat} {Γ : HOL_ctx n} {Ξ : proof_ctx n Γ}
+    forall {n : nat} {Γ : HOL_ctx n} {Ξ : proof_ctx n}
            {φ : tm n} (ψ : tm n),
       Γ ∣ Ξ ⊢| n | φ ∧ₛ ψ -> Γ ∣ Ξ ⊢| n | φ.
   Proof.
@@ -278,7 +276,7 @@ Require Import PeanoNat List Program.Equality.
   Qed.
 
   Lemma pr_proj2 :
-    forall {n : nat} {Γ : HOL_ctx n} {Ξ : proof_ctx n Γ}
+    forall {n : nat} {Γ : HOL_ctx n} {Ξ : proof_ctx n}
            (φ : tm n) {ψ : tm n},
       Γ ∣ Ξ ⊢| n | φ ∧ₛ ψ -> Γ ∣ Ξ ⊢| n | ψ.
   Proof.
@@ -305,7 +303,7 @@ Require Import PeanoNat List Program.Equality.
   Qed.
 
   Lemma pr_coproj1 :
-    forall {n : nat} {Γ : HOL_ctx n} {Ξ : proof_ctx n Γ}
+    forall {n : nat} {Γ : HOL_ctx n} {Ξ : proof_ctx n}
            {φ : tm n} (ψ : tm n),
       Γ ∣ Ξ ⊢| n | φ -> Γ ⊢⟨ n ⟩ ψ ~: ℙₛ -> Γ ∣ Ξ ⊢| n | φ ∨ₛ ψ.
   Proof.
@@ -321,7 +319,7 @@ Require Import PeanoNat List Program.Equality.
     apply HΞ.
     right; left; reflexivity.
     apply weaken_proof_1. apply weaken_proof_1.
-    apply ren_proof.
+    eapply ren_proof.
     intro; reflexivity.
     apply H.
     repeat constructor. apply typ_weaken. apply Hφ.
@@ -329,7 +327,7 @@ Require Import PeanoNat List Program.Equality.
   Qed.
 
   Lemma pr_coproj2 :
-    forall {n : nat} {Γ : HOL_ctx n} {Ξ : proof_ctx n Γ}
+    forall {n : nat} {Γ : HOL_ctx n} {Ξ : proof_ctx n}
            (φ : tm n) {ψ : tm n},
       Γ ⊢⟨ n ⟩ φ ~: ℙₛ -> Γ ∣ Ξ ⊢| n | ψ -> Γ ∣ Ξ ⊢| n | φ ∨ₛ ψ.
   Proof.
@@ -345,7 +343,7 @@ Require Import PeanoNat List Program.Equality.
     apply HΞ.
     left; reflexivity.
     apply weaken_proof_1. apply weaken_proof_1.
-    apply ren_proof.
+    eapply ren_proof.
     intro; reflexivity.
     apply H0.
     repeat constructor. apply typ_weaken. apply H.
@@ -353,7 +351,7 @@ Require Import PeanoNat List Program.Equality.
   Qed.
 
   Lemma pr_cases :
-    forall {n : nat} {Γ : HOL_ctx n} {Ξ : proof_ctx n Γ}
+    forall {n : nat} {Γ : HOL_ctx n} {Ξ : proof_ctx n}
            {φ ψ χ: tm n},
       Γ ∣ Ξ ⊢| n | φ ∨ₛ ψ ->
       Γ ∣ φ :: Ξ ⊢| n | χ -> Γ ∣ ψ :: Ξ ⊢| n | χ ->
@@ -370,7 +368,7 @@ Require Import PeanoNat List Program.Equality.
   Qed.
 
   Lemma pr_wit :
-    forall {n : nat} {Γ : HOL_ctx n} {Ξ : proof_ctx n Γ}
+    forall {n : nat} {Γ : HOL_ctx n} {Ξ : proof_ctx n}
            {φ : tm (S n)} (t : tm n) {s : st},
       s .: Γ ⊢⟨ S n ⟩ φ ~: ℙₛ ->
       Γ ⊢⟨ n ⟩ t ~: s -> Γ ∣ Ξ ⊢| n | subst_tm (t .: var_tm) φ ->
@@ -417,7 +415,7 @@ Require Import PeanoNat List Program.Equality.
   Qed.
 
   Lemma pr_ex_e :
-    forall {n : nat} {Γ : HOL_ctx n} {Ξ : proof_ctx n Γ}
+    forall {n : nat} {Γ : HOL_ctx n} {Ξ : proof_ctx n}
            {φ : tm (S n)} {ψ : tm n} (t : tm n) {s : st},
       Γ ∣ Ξ ⊢| n | ∃ₛ s φ ->
       s .: Γ ∣ φ :: map (ren_tm shift) Ξ ⊢| S n | ren_tm shift ψ ->
@@ -441,8 +439,8 @@ Require Import PeanoNat List Program.Equality.
   Qed.
 
   Lemma pr_true :
-    forall {n : nat} {Γ : HOL_ctx n} {Ξ : proof_ctx n Γ},
-      wt_ctx Ξ -> Γ ∣ Ξ ⊢| n | ⊤ₛ.
+    forall {n : nat} {Γ : HOL_ctx n} {Ξ : proof_ctx n},
+      wt_ctx Γ Ξ -> Γ ∣ Ξ ⊢| n | ⊤ₛ.
   Proof.
     intros. apply pr_abs_f. apply pr_abs.
     repeat constructor.
@@ -452,7 +450,7 @@ Require Import PeanoNat List Program.Equality.
   Qed.
 
   Lemma pr_false_e :
-    forall {n : nat} {Γ : HOL_ctx n} {Ξ : proof_ctx n Γ}
+    forall {n : nat} {Γ : HOL_ctx n} {Ξ : proof_ctx n}
            {φ : tm n},
       Γ ⊢⟨ n ⟩ φ ~: ℙₛ -> Γ ∣ Ξ ⊢| n | ⊥ₛ -> Γ ∣ Ξ ⊢| n | φ.
   Proof.
@@ -461,7 +459,7 @@ Require Import PeanoNat List Program.Equality.
   Qed.
 
   Lemma pr_not_i :
-    forall {n : nat} {Γ : HOL_ctx n} {Ξ : proof_ctx n Γ}
+    forall {n : nat} {Γ : HOL_ctx n} {Ξ : proof_ctx n}
            {φ : tm n},
       Γ ∣ φ :: Ξ ⊢| n | ⊥ₛ -> Γ ∣ Ξ ⊢| n | ¬ₛ φ.
   Proof.
@@ -469,7 +467,7 @@ Require Import PeanoNat List Program.Equality.
   Qed.
 
   Lemma pr_not_e :
-    forall {n : nat} {Γ : HOL_ctx n} {Ξ : proof_ctx n Γ}
+    forall {n : nat} {Γ : HOL_ctx n} {Ξ : proof_ctx n}
            {φ : tm n},
       Γ ∣ Ξ ⊢| n | φ -> Γ ∣ Ξ ⊢| n | ¬ₛ φ ->
       Γ ∣ Ξ ⊢| n | ⊥ₛ.

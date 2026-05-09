@@ -7,3 +7,4 @@ src/HOL/Typing.v
 src/HOL/Reduction.v
 src/HOL/Theorie.v
 src/HOL/Logical.v
+src/HOL/Termes.v

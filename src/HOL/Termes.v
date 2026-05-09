@@ -1,7 +1,144 @@
 From CRM Require Import Base Typing Reduction Theorie Logical fintype.
 Import CombineNotations SubstNotations.
+From CRM Require Import Prelude.ListCRM.
 
-Require Import PeanoNat List.
+Require Import PeanoNat List Program.Equality.
+
+Section Standardization.
+
+  Fixpoint HOL_ctx_stand (n : nat) : HOL_ctx n -> proof_ctx n.
+  Proof.
+    intro Γ. induction n.
+    - exact nil.
+    - exact (𝕊 (Γ var_zero) ⟦ var_zero ⟧ₛ ::
+               map (ren_tm shift) (HOL_ctx_stand n (shift >> Γ))).
+  Defined.
+
+  Lemma typ_stand :
+    forall (n : nat) (Γ : HOL_ctx n), wt_ctx Γ (HOL_ctx_stand n Γ).
+  Proof.
+    intro n; induction n; intro Γ.
+    - constructor.
+    - simpl. constructor.
+      constructor. constructor.
+      specialize (IHn (shift >> Γ)).
+      eapply map_forall.
+      intros a Ha.
+      apply (typ_ren _ _ shift Γ (shift >> Γ)).
+      reflexivity.
+      apply Ha.
+      apply IHn.
+  Qed.
+
+  Inductive stand_tm : forall (n : nat), tm n -> Prop :=
+  | st_var : forall (n : nat) (v : fin n),
+      stand_tm n ⟦ v ⟧ₛ
+  | st_lam : forall (n : nat) (t : tm (S n)),
+      stand_tm (S n) t -> stand_tm n (ƛ t)
+  | st_app : forall (n : nat) (t u : tm n),
+      stand_tm n t -> stand_tm n u ->
+      stand_tm n (t @ₛ u)
+  | st_pair : forall (n : nat) (t u : tm n),
+      stand_tm n t -> stand_tm n u ->
+      stand_tm n ⟨ t, u ⟩ₛ
+  | st_proj1 : forall (n : nat) (t : tm n),
+      stand_tm n t -> stand_tm n (π¹ₛ t)
+  | st_proj2 : forall (n : nat) (t u : tm n),
+      stand_tm n t -> stand_tm n (π²ₛ t)
+  | st_Z : forall (n : nat), stand_tm n Zₛ
+  | st_S : forall (n : nat) (t : tm n),
+      stand_tm n t -> stand_tm n (Sₛ t)
+  | st_recN : forall (n : nat) (t u v : tm n),
+      stand_tm n t -> stand_tm n u -> stand_tm n v ->
+      stand_tm n (recℕₛ t u v)
+  | st_T : forall (n : nat), stand_tm n ttₛ
+  | st_F : forall (n : nat), stand_tm n ffₛ
+  | st_recB : forall (n : nat) (t u v : tm n),
+      stand_tm n t -> stand_tm n u -> stand_tm n v ->
+      stand_tm n (rec𝔹ₛ t u v)
+  | st_nil : forall (n : nat), stand_tm n []ₛ
+  | st_cons : forall (n : nat) (t u : tm n),
+      stand_tm n t -> stand_tm n u ->
+      stand_tm n (t ::ₛ u)
+  | st_recL : forall (n : nat) (t u v : tm n),
+      stand_tm n t -> stand_tm n u -> stand_tm n v ->
+      stand_tm n (rec𝕃ₛ t u v).
+
+  Lemma stand_in_stand_ctx :
+    forall {n : nat} {Γ : HOL_ctx n} (v : fin n),
+      In (𝕊 (Γ v) ⟦ v ⟧ₛ) (HOL_ctx_stand n Γ).
+  Proof.
+    intros. induction n.
+    + inversion v.
+    + simpl. destruct v.
+      ++ right. specialize (IHn (shift >> Γ) f).
+         specialize (in_map (ren_tm shift)
+                       (HOL_ctx_stand n (shift >> Γ))
+                       (𝕊 ((shift >> Γ) f) ⟦ f ⟧ₛ) IHn) as H.
+         asimpl in H. apply H.
+      ++ left. reflexivity.
+  Qed.
+
+  Theorem pr_stand_tm :
+    forall {n : nat} {Γ : HOL_ctx n} (t : tm n) (s : st),
+      stand_tm n t -> Γ ⊢⟨ n ⟩ t ~: s ->
+      Γ ∣ HOL_ctx_stand n Γ ⊢| n | 𝕊 s t.
+  Proof.
+    intros n Γ t s stand H. induction H;
+      try rename IHHOL_typing into IH;
+      try rename IHHOL_typing1 into IH1;
+      try rename IHHOL_typing2 into IH2;
+      try rename IHHOL_typing3 into IH3.
+    - apply pr_ax. apply typ_stand. apply stand_in_stand_ctx.
+    - dependent destruction stand. specialize (IH stand).
+      apply pr_sort_lam. simpl in IH. assumption.
+    - dependent destruction stand.
+      specialize (IH1 stand1); specialize (IH2 stand2).
+      apply (pr_sort_app s); assumption.
+    - apply pr_sort_Z. apply typ_stand.
+    - dependent destruction stand. specialize (IH stand).
+      apply pr_sort_S; assumption.
+    - dependent destruction stand.
+      specialize (IH1 stand1); specialize (IH2 stand2);
+        specialize (IH3 stand3).
+      apply pr_sort_recN; assumption.
+    - apply pr_sort_T. apply typ_stand.
+    - apply pr_sort_F. apply typ_stand.
+    - dependent destruction stand.
+      specialize (IH1 stand1); specialize (IH2 stand2);
+        specialize (IH3 stand3).
+      apply pr_sort_recB; assumption.
+    - apply pr_sort_nil. apply typ_stand.
+    - dependent destruction stand.
+      specialize (IH1 stand1); specialize (IH2 stand2).
+      apply (pr_sort_cons); assumption.
+    - dependent destruction stand.
+      specialize (IH1 stand1); specialize (IH2 stand2);
+        specialize (IH3 stand3).
+      apply (pr_sort_recL s'); assumption.
+    - dependent destruction stand.
+      specialize (IH1 stand1); specialize (IH2 stand2).
+      apply (pr_sort_pair); assumption.
+    - dependent destruction stand. specialize (IH stand).
+      apply (pr_sort_proj1 s'); assumption.
+    - dependent destruction stand. specialize (IH stand).
+      apply (pr_sort_proj2 s); assumption.
+    - inversion stand.
+    - inversion stand.
+    - inversion stand.
+  Qed.
+
+  Corollary pr_stand_cl :
+    forall (t : tm 0) (s : st),
+      stand_tm 0 t ->
+      False_rect st ⊢⟨ 0 ⟩ t ~: s ->
+      False_rect st ∣ nil ⊢| 0 | 𝕊 s t.
+  Proof.
+    intros. apply (@pr_stand_tm 0 _ t s).
+    apply H. apply H0.
+  Qed.
+
+End Standardization.
 
 Fixpoint nat_to_tm {n : nat} (m : nat) : tm n :=
   match m with
