@@ -8,3 +8,4 @@ src/HOL/Reduction.v
 src/HOL/Theorie.v
 src/HOL/Logical.v
 src/HOL/Termes.v
+src/EF/Def.v
