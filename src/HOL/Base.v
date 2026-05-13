@@ -1,1228 +1,313 @@
-Require Import core fintype.
-
-Require Import Setoid Morphisms Relation_Definitions.
-
-
-Module Core.
-
-  Inductive st : Type :=
-  | nat_st : st
-  | bool_st : st
-  | list_st : st -> st
-  | prop_st : st
-  | to_st : st -> st -> st
-  | prod_st : st -> st -> st.
-
-  Notation ℕₛ := nat_st.
-  Notation 𝔹ₛ := bool_st.
-  Notation 𝕃ₛ := list_st.
-  Notation ℙₛ := prop_st.
-  Notation "s →ₛ s'" := (to_st s s') (at level 82, right associativity).
-  Notation "s ×ₛ s'" := (prod_st s s') (at level 81, right associativity).
-
-  Lemma congr_nat_st : nat_st = nat_st.
-  Proof.
-    exact (eq_refl).
-  Qed.
-
-  Lemma congr_bool_st : bool_st = bool_st.
-  Proof.
-    exact (eq_refl).
-  Qed.
-
-  Lemma congr_list_st {s0 : st} {t0 : st} (H0 : s0 = t0) :
-    list_st s0 = list_st t0.
-  Proof.
-    exact (eq_trans eq_refl (ap (fun x => list_st x) H0)).
-  Qed.
-
-  Lemma congr_prop_st : prop_st = prop_st.
-  Proof.
-    exact (eq_refl).
-  Qed.
-
-  Lemma congr_to_st {s0 : st} {s1 : st} {t0 : st} {t1 : st} (H0 : s0 = t0)
-    (H1 : s1 = t1) : to_st s0 s1 = to_st t0 t1.
-  Proof.
-    exact (eq_trans (eq_trans eq_refl (ap (fun x => to_st x s1) H0))
-             (ap (fun x => to_st t0 x) H1)).
-  Qed.
-
-  Lemma congr_prod_st {s0 : st} {s1 : st} {t0 : st} {t1 : st} (H0 : s0 = t0)
-    (H1 : s1 = t1) : prod_st s0 s1 = prod_st t0 t1.
-  Proof.
-    exact (eq_trans (eq_trans eq_refl (ap (fun x => prod_st x s1) H0))
-             (ap (fun x => prod_st t0 x) H1)).
-  Qed.
-
-  Inductive tm (n_tm : nat) : Type :=
-  | var_tm : fin n_tm -> tm n_tm
-  | lam_tm : tm (S n_tm) -> tm n_tm
-  | app_tm : tm n_tm -> tm n_tm -> tm n_tm
-  | z_tm : tm n_tm
-  | s_tm : tm n_tm -> tm n_tm
-  | recN_tm : tm n_tm -> tm n_tm -> tm n_tm -> tm n_tm
-  | tt_tm : tm n_tm
-  | ff_tm : tm n_tm
-  | recB_tm : tm n_tm -> tm n_tm -> tm n_tm -> tm n_tm
-  | nil_tm : tm n_tm
-  | cons_tm : tm n_tm -> tm n_tm -> tm n_tm
-  | recL_tm : tm n_tm -> tm n_tm -> tm n_tm -> tm n_tm
-  | pair_tm : tm n_tm -> tm n_tm -> tm n_tm
-  | pi1_tm : tm n_tm -> tm n_tm
-  | pi2_tm : tm n_tm -> tm n_tm
-  | imp_tm : tm n_tm -> tm n_tm -> tm n_tm
-  | forall_tm : st -> tm (S n_tm) -> tm n_tm
-  | sort_tm : st -> tm n_tm -> tm n_tm.
-  
-  Notation "⟦ n ⟧ₛ" := (var_tm _ n).
-  Notation ƛ := (lam_tm _).
-  Notation "t @ₛ u" := (app_tm _ t u) (at level 78, left associativity).
-  Notation Zₛ := (z_tm _).
-  Notation Sₛ := (s_tm _).
-  Notation recℕₛ := (recN_tm _).
-  Notation ttₛ := (tt_tm _).
-  Notation ffₛ := (ff_tm _).
-  Notation rec𝔹ₛ := (recB_tm _).
-  Notation "[]ₛ" := (nil_tm _).
-  Notation "t ::ₛ u" := (cons_tm _ t u) (at level 76, right associativity).
-  Notation rec𝕃ₛ := (recL_tm _).
-  Notation "⟨ t , u ⟩ₛ" := (pair_tm _ t u).
-  Notation "π¹ₛ" := (pi1_tm _).
-  Notation "π²ₛ" := (pi2_tm _).
-  Notation "φ ⇒ₛ ψ" := (imp_tm _ φ ψ) (at level 80, right associativity).
-  Notation "∀ₛ" := (forall_tm _) (at level 81).
-  Notation 𝕊 := (sort_tm _).
-
-  Lemma congr_lam_tm {m_tm : nat} {s0 : tm (S m_tm)} {t0 : tm (S m_tm)}
-    (H0 : s0 = t0) : lam_tm m_tm s0 = lam_tm m_tm t0.
-  Proof.
-    exact (eq_trans eq_refl (ap (fun x => lam_tm m_tm x) H0)).
-  Qed.
-
-  Lemma congr_app_tm {m_tm : nat} {s0 : tm m_tm} {s1 : tm m_tm} {t0 : tm m_tm}
-    {t1 : tm m_tm} (H0 : s0 = t0) (H1 : s1 = t1) :
-    app_tm m_tm s0 s1 = app_tm m_tm t0 t1.
-  Proof.
-    exact (eq_trans (eq_trans eq_refl (ap (fun x => app_tm m_tm x s1) H0))
-             (ap (fun x => app_tm m_tm t0 x) H1)).
-  Qed.
-
-  Lemma congr_z_tm {m_tm : nat} : z_tm m_tm = z_tm m_tm.
-  Proof.
-    exact (eq_refl).
-  Qed.
-
-  Lemma congr_s_tm {m_tm : nat} {s0 : tm m_tm} {t0 : tm m_tm} (H0 : s0 = t0) :
-    s_tm m_tm s0 = s_tm m_tm t0.
-  Proof.
-    exact (eq_trans eq_refl (ap (fun x => s_tm m_tm x) H0)).
-  Qed.
-
-  Lemma congr_recN_tm {m_tm : nat} {s0 : tm m_tm} {s1 : tm m_tm} {s2 : tm m_tm}
-    {t0 : tm m_tm} {t1 : tm m_tm} {t2 : tm m_tm} (H0 : s0 = t0) (H1 : s1 = t1)
-    (H2 : s2 = t2) : recN_tm m_tm s0 s1 s2 = recN_tm m_tm t0 t1 t2.
-  Proof.
-    exact (eq_trans
-             (eq_trans (eq_trans eq_refl (ap (fun x => recN_tm m_tm x s1 s2) H0))
-                (ap (fun x => recN_tm m_tm t0 x s2) H1))
-             (ap (fun x => recN_tm m_tm t0 t1 x) H2)).
-  Qed.
-
-  Lemma congr_tt_tm {m_tm : nat} : tt_tm m_tm = tt_tm m_tm.
-  Proof.
-    exact (eq_refl).
-  Qed.
-
-  Lemma congr_ff_tm {m_tm : nat} : ff_tm m_tm = ff_tm m_tm.
-  Proof.
-    exact (eq_refl).
-  Qed.
-
-  Lemma congr_recB_tm {m_tm : nat} {s0 : tm m_tm} {s1 : tm m_tm} {s2 : tm m_tm}
-    {t0 : tm m_tm} {t1 : tm m_tm} {t2 : tm m_tm} (H0 : s0 = t0) (H1 : s1 = t1)
-    (H2 : s2 = t2) : recB_tm m_tm s0 s1 s2 = recB_tm m_tm t0 t1 t2.
-  Proof.
-    exact (eq_trans
-             (eq_trans (eq_trans eq_refl (ap (fun x => recB_tm m_tm x s1 s2) H0))
-                (ap (fun x => recB_tm m_tm t0 x s2) H1))
-             (ap (fun x => recB_tm m_tm t0 t1 x) H2)).
-  Qed.
-
-  Lemma congr_nil_tm {m_tm : nat} : nil_tm m_tm = nil_tm m_tm.
-  Proof.
-    exact (eq_refl).
-  Qed.
-
-  Lemma congr_cons_tm {m_tm : nat} {s0 : tm m_tm} {s1 : tm m_tm} {t0 : tm m_tm}
-    {t1 : tm m_tm} (H0 : s0 = t0) (H1 : s1 = t1) :
-    cons_tm m_tm s0 s1 = cons_tm m_tm t0 t1.
-  Proof.
-    exact (eq_trans (eq_trans eq_refl (ap (fun x => cons_tm m_tm x s1) H0))
-             (ap (fun x => cons_tm m_tm t0 x) H1)).
-  Qed.
-
-  Lemma congr_recL_tm {m_tm : nat} {s0 : tm m_tm} {s1 : tm m_tm} {s2 : tm m_tm}
-    {t0 : tm m_tm} {t1 : tm m_tm} {t2 : tm m_tm} (H0 : s0 = t0) (H1 : s1 = t1)
-    (H2 : s2 = t2) : recL_tm m_tm s0 s1 s2 = recL_tm m_tm t0 t1 t2.
-  Proof.
-    exact (eq_trans
-             (eq_trans (eq_trans eq_refl (ap (fun x => recL_tm m_tm x s1 s2) H0))
-                (ap (fun x => recL_tm m_tm t0 x s2) H1))
-             (ap (fun x => recL_tm m_tm t0 t1 x) H2)).
-  Qed.
-
-  Lemma congr_pair_tm {m_tm : nat} {s0 : tm m_tm} {s1 : tm m_tm} {t0 : tm m_tm}
-    {t1 : tm m_tm} (H0 : s0 = t0) (H1 : s1 = t1) :
-    pair_tm m_tm s0 s1 = pair_tm m_tm t0 t1.
-  Proof.
-    exact (eq_trans (eq_trans eq_refl (ap (fun x => pair_tm m_tm x s1) H0))
-             (ap (fun x => pair_tm m_tm t0 x) H1)).
-  Qed.
-
-  Lemma congr_pi1_tm {m_tm : nat} {s0 : tm m_tm} {t0 : tm m_tm} (H0 : s0 = t0)
-    : pi1_tm m_tm s0 = pi1_tm m_tm t0.
-  Proof.
-    exact (eq_trans eq_refl (ap (fun x => pi1_tm m_tm x) H0)).
-  Qed.
-
-  Lemma congr_pi2_tm {m_tm : nat} {s0 : tm m_tm} {t0 : tm m_tm} (H0 : s0 = t0)
-    : pi2_tm m_tm s0 = pi2_tm m_tm t0.
-  Proof.
-    exact (eq_trans eq_refl (ap (fun x => pi2_tm m_tm x) H0)).
-  Qed.
-
-  Lemma congr_imp_tm {m_tm : nat} {s0 : tm m_tm} {s1 : tm m_tm} {t0 : tm m_tm}
-    {t1 : tm m_tm} (H0 : s0 = t0) (H1 : s1 = t1) :
-    imp_tm m_tm s0 s1 = imp_tm m_tm t0 t1.
-  Proof.
-    exact (eq_trans (eq_trans eq_refl (ap (fun x => imp_tm m_tm x s1) H0))
-             (ap (fun x => imp_tm m_tm t0 x) H1)).
-  Qed.
-
-  Lemma congr_forall_tm {m_tm : nat} {s0 : st} {s1 : tm (S m_tm)} {t0 : st}
-    {t1 : tm (S m_tm)}
-    (H0 : s0 = t0) (H1 : s1 = t1) : forall_tm m_tm s0 s1 = forall_tm m_tm t0 t1.
-  Proof.
-    exact (eq_trans (eq_trans eq_refl (ap (fun x => forall_tm m_tm x s1) H0))
-             (ap (fun x => forall_tm m_tm t0 x) H1)).
-  Qed.
-
-  Lemma congr_sort_tm {m_tm : nat} {s0 : st} {s1 : tm m_tm} {t0 : st}
-    {t1 : tm m_tm} (H0 : s0 = t0) (H1 : s1 = t1) :
-    sort_tm m_tm s0 s1 = sort_tm m_tm t0 t1.
-  Proof.
-    exact (eq_trans (eq_trans eq_refl (ap (fun x => sort_tm m_tm x s1) H0))
-             (ap (fun x => sort_tm m_tm t0 x) H1)).
-  Qed.
-
-  Lemma upRen_tm_tm {m : nat} {n : nat} (xi : fin m -> fin n) :
-    fin (S m) -> fin (S n).
-  Proof.
-    exact (up_ren xi).
-  Defined.
-
-  Lemma upRen_list_tm_tm (p : nat) {m : nat} {n : nat} (xi : fin m -> fin n) :
-    fin (plus p m) -> fin (plus p n).
-  Proof.
-    exact (upRen_p p xi).
-  Defined.
-
-  Fixpoint ren_tm {m_tm : nat} {n_tm : nat} (xi_tm : fin m_tm -> fin n_tm)
-    (s : tm m_tm) {struct s} : tm n_tm :=
-    match s with
-    | var_tm _ s0 => var_tm n_tm (xi_tm s0)
-    | lam_tm _ s0 => lam_tm n_tm (ren_tm (upRen_tm_tm xi_tm) s0)
-    | app_tm _ s0 s1 => app_tm n_tm (ren_tm xi_tm s0) (ren_tm xi_tm s1)
-    | z_tm _ => z_tm n_tm
-    | s_tm _ s0 => s_tm n_tm (ren_tm xi_tm s0)
-    | recN_tm _ s0 s1 s2 =>
-        recN_tm n_tm (ren_tm xi_tm s0) (ren_tm xi_tm s1) (ren_tm xi_tm s2)
-    | tt_tm _ => tt_tm n_tm
-    | ff_tm _ => ff_tm n_tm
-    | recB_tm _ s0 s1 s2 =>
-        recB_tm n_tm (ren_tm xi_tm s0) (ren_tm xi_tm s1) (ren_tm xi_tm s2)
-    | nil_tm _ => nil_tm n_tm
-    | cons_tm _ s0 s1 => cons_tm n_tm (ren_tm xi_tm s0) (ren_tm xi_tm s1)
-    | recL_tm _ s0 s1 s2 =>
-        recL_tm n_tm (ren_tm xi_tm s0) (ren_tm xi_tm s1) (ren_tm xi_tm s2)
-    | pair_tm _ s0 s1 => pair_tm n_tm (ren_tm xi_tm s0) (ren_tm xi_tm s1)
-    | pi1_tm _ s0 => pi1_tm n_tm (ren_tm xi_tm s0)
-    | pi2_tm _ s0 => pi2_tm n_tm (ren_tm xi_tm s0)
-    | imp_tm _ s0 s1 => imp_tm n_tm (ren_tm xi_tm s0) (ren_tm xi_tm s1)
-    | forall_tm _ s s0 => forall_tm n_tm s (ren_tm (upRen_tm_tm xi_tm) s0)
-    | sort_tm _ s0 s1 => sort_tm n_tm s0 (ren_tm xi_tm s1)
-    end.
-
-  Lemma up_tm_tm {m : nat} {n_tm : nat} (sigma : fin m -> tm n_tm) :
-    fin (S m) -> tm (S n_tm).
-  Proof.
-    exact (scons (var_tm (S n_tm) var_zero) (funcomp (ren_tm shift) sigma)).
-  Defined.
-
-  Lemma up_list_tm_tm (p : nat) {m : nat} {n_tm : nat}
-    (sigma : fin m -> tm n_tm) : fin (plus p m) -> tm (plus p n_tm).
-  Proof.
-    exact (scons_p p (funcomp (var_tm (plus p n_tm)) (zero_p p))
-             (funcomp (ren_tm (shift_p p)) sigma)).
-  Defined.
-
-  Fixpoint subst_tm {m_tm : nat} {n_tm : nat} (sigma_tm : fin m_tm -> tm n_tm)
-    (s : tm m_tm) {struct s} : tm n_tm :=
-    match s with
-    | var_tm _ s0 => sigma_tm s0
-    | lam_tm _ s0 => lam_tm n_tm (subst_tm (up_tm_tm sigma_tm) s0)
-    | app_tm _ s0 s1 =>
-        app_tm n_tm (subst_tm sigma_tm s0) (subst_tm sigma_tm s1)
-    | z_tm _ => z_tm n_tm
-    | s_tm _ s0 => s_tm n_tm (subst_tm sigma_tm s0)
-    | recN_tm _ s0 s1 s2 =>
-        recN_tm n_tm (subst_tm sigma_tm s0) (subst_tm sigma_tm s1)
-          (subst_tm sigma_tm s2)
-    | tt_tm _ => tt_tm n_tm
-    | ff_tm _ => ff_tm n_tm
-    | recB_tm _ s0 s1 s2 =>
-        recB_tm n_tm (subst_tm sigma_tm s0) (subst_tm sigma_tm s1)
-          (subst_tm sigma_tm s2)
-    | nil_tm _ => nil_tm n_tm
-    | cons_tm _ s0 s1 =>
-        cons_tm n_tm (subst_tm sigma_tm s0) (subst_tm sigma_tm s1)
-    | recL_tm _ s0 s1 s2 =>
-        recL_tm n_tm (subst_tm sigma_tm s0) (subst_tm sigma_tm s1)
-          (subst_tm sigma_tm s2)
-    | pair_tm _ s0 s1 =>
-        pair_tm n_tm (subst_tm sigma_tm s0) (subst_tm sigma_tm s1)
-    | pi1_tm _ s0 => pi1_tm n_tm (subst_tm sigma_tm s0)
-    | pi2_tm _ s0 => pi2_tm n_tm (subst_tm sigma_tm s0)
-    | imp_tm _ s0 s1 =>
-        imp_tm n_tm (subst_tm sigma_tm s0) (subst_tm sigma_tm s1)
-    | forall_tm _ s s0 => forall_tm n_tm s (subst_tm (up_tm_tm sigma_tm) s0)
-    | sort_tm _ s0 s1 => sort_tm n_tm s0 (subst_tm sigma_tm s1)
-    end.
-
-  Lemma upId_tm_tm {m_tm : nat} (sigma : fin m_tm -> tm m_tm)
-    (Eq : forall x, sigma x = var_tm m_tm x) :
-    forall x, up_tm_tm sigma x = var_tm (S m_tm) x.
-  Proof.
-    exact (fun n =>
-             match n with
-             | Some fin_n => ap (ren_tm shift) (Eq fin_n)
-             | None => eq_refl
-             end).
-  Qed.
-
-  Lemma upId_list_tm_tm {p : nat} {m_tm : nat} (sigma : fin m_tm -> tm m_tm)
-    (Eq : forall x, sigma x = var_tm m_tm x) :
-    forall x, up_list_tm_tm p sigma x = var_tm (plus p m_tm) x.
-  Proof.
-    exact (fun n =>
-             scons_p_eta (var_tm (plus p m_tm))
-               (fun n => ap (ren_tm (shift_p p)) (Eq n)) (fun n => eq_refl)).
-  Qed.
-
-  Fixpoint idSubst_tm {m_tm : nat} (sigma_tm : fin m_tm -> tm m_tm)
-    (Eq_tm : forall x, sigma_tm x = var_tm m_tm x) (s : tm m_tm) {struct s} :
-    subst_tm sigma_tm s = s :=
-    match s with
-    | var_tm _ s0 => Eq_tm s0
-    | lam_tm _ s0 =>
-        congr_lam_tm (idSubst_tm (up_tm_tm sigma_tm) (upId_tm_tm _ Eq_tm) s0)
-    | app_tm _ s0 s1 =>
-        congr_app_tm (idSubst_tm sigma_tm Eq_tm s0)
-          (idSubst_tm sigma_tm Eq_tm s1)
-    | z_tm _ => congr_z_tm
-    | s_tm _ s0 => congr_s_tm (idSubst_tm sigma_tm Eq_tm s0)
-    | recN_tm _ s0 s1 s2 =>
-        congr_recN_tm (idSubst_tm sigma_tm Eq_tm s0)
-          (idSubst_tm sigma_tm Eq_tm s1) (idSubst_tm sigma_tm Eq_tm s2)
-    | tt_tm _ => congr_tt_tm
-    | ff_tm _ => congr_ff_tm
-    | recB_tm _ s0 s1 s2 =>
-        congr_recB_tm (idSubst_tm sigma_tm Eq_tm s0)
-          (idSubst_tm sigma_tm Eq_tm s1) (idSubst_tm sigma_tm Eq_tm s2)
-    | nil_tm _ => congr_nil_tm
-    | cons_tm _ s0 s1 =>
-        congr_cons_tm (idSubst_tm sigma_tm Eq_tm s0)
-          (idSubst_tm sigma_tm Eq_tm s1)
-    | recL_tm _ s0 s1 s2 =>
-        congr_recL_tm (idSubst_tm sigma_tm Eq_tm s0)
-          (idSubst_tm sigma_tm Eq_tm s1) (idSubst_tm sigma_tm Eq_tm s2)
-    | pair_tm _ s0 s1 =>
-        congr_pair_tm (idSubst_tm sigma_tm Eq_tm s0)
-          (idSubst_tm sigma_tm Eq_tm s1)
-    | pi1_tm _ s0 => congr_pi1_tm (idSubst_tm sigma_tm Eq_tm s0)
-    | pi2_tm _ s0 => congr_pi2_tm (idSubst_tm sigma_tm Eq_tm s0)
-    | imp_tm _ s0 s1 =>
-        congr_imp_tm (idSubst_tm sigma_tm Eq_tm s0)
-          (idSubst_tm sigma_tm Eq_tm s1)
-    | forall_tm _ s s0 =>
-        congr_forall_tm (eq_refl s)
-          (idSubst_tm (up_tm_tm sigma_tm) (upId_tm_tm _ Eq_tm) s0)
-    | sort_tm _ s0 s1 =>
-        congr_sort_tm (eq_refl s0) (idSubst_tm sigma_tm Eq_tm s1)
-    end.
-
-  Lemma upExtRen_tm_tm {m : nat} {n : nat} (xi : fin m -> fin n)
-    (zeta : fin m -> fin n) (Eq : forall x, xi x = zeta x) :
-    forall x, upRen_tm_tm xi x = upRen_tm_tm zeta x.
-  Proof.
-    exact (fun n =>
-             match n with
-             | Some fin_n => ap shift (Eq fin_n)
-             | None => eq_refl
-             end).
-  Qed.
-
-  Lemma upExtRen_list_tm_tm {p : nat} {m : nat} {n : nat} (xi : fin m -> fin n)
-    (zeta : fin m -> fin n) (Eq : forall x, xi x = zeta x) :
-    forall x, upRen_list_tm_tm p xi x = upRen_list_tm_tm p zeta x.
-  Proof.
-    exact (fun n =>
-             scons_p_congr (fun n => eq_refl) (fun n => ap (shift_p p) (Eq n))).
-  Qed.
-
-  Fixpoint extRen_tm {m_tm : nat} {n_tm : nat} (xi_tm : fin m_tm -> fin n_tm)
-    (zeta_tm : fin m_tm -> fin n_tm) (Eq_tm : forall x, xi_tm x = zeta_tm x)
-    (s : tm m_tm) {struct s} : ren_tm xi_tm s = ren_tm zeta_tm s :=
-    match s with
-    | var_tm _ s0 => ap (var_tm n_tm) (Eq_tm s0)
-    | lam_tm _ s0 =>
-        congr_lam_tm
-          (extRen_tm (upRen_tm_tm xi_tm) (upRen_tm_tm zeta_tm)
-             (upExtRen_tm_tm _ _ Eq_tm) s0)
-    | app_tm _ s0 s1 =>
-        congr_app_tm (extRen_tm xi_tm zeta_tm Eq_tm s0)
-          (extRen_tm xi_tm zeta_tm Eq_tm s1)
-    | z_tm _ => congr_z_tm
-    | s_tm _ s0 => congr_s_tm (extRen_tm xi_tm zeta_tm Eq_tm s0)
-    | recN_tm _ s0 s1 s2 =>
-        congr_recN_tm (extRen_tm xi_tm zeta_tm Eq_tm s0)
-          (extRen_tm xi_tm zeta_tm Eq_tm s1) (extRen_tm xi_tm zeta_tm Eq_tm s2)
-    | tt_tm _ => congr_tt_tm
-    | ff_tm _ => congr_ff_tm
-    | recB_tm _ s0 s1 s2 =>
-        congr_recB_tm (extRen_tm xi_tm zeta_tm Eq_tm s0)
-          (extRen_tm xi_tm zeta_tm Eq_tm s1) (extRen_tm xi_tm zeta_tm Eq_tm s2)
-    | nil_tm _ => congr_nil_tm
-    | cons_tm _ s0 s1 =>
-        congr_cons_tm (extRen_tm xi_tm zeta_tm Eq_tm s0)
-          (extRen_tm xi_tm zeta_tm Eq_tm s1)
-    | recL_tm _ s0 s1 s2 =>
-        congr_recL_tm (extRen_tm xi_tm zeta_tm Eq_tm s0)
-          (extRen_tm xi_tm zeta_tm Eq_tm s1) (extRen_tm xi_tm zeta_tm Eq_tm s2)
-    | pair_tm _ s0 s1 =>
-        congr_pair_tm (extRen_tm xi_tm zeta_tm Eq_tm s0)
-          (extRen_tm xi_tm zeta_tm Eq_tm s1)
-    | pi1_tm _ s0 => congr_pi1_tm (extRen_tm xi_tm zeta_tm Eq_tm s0)
-    | pi2_tm _ s0 => congr_pi2_tm (extRen_tm xi_tm zeta_tm Eq_tm s0)
-    | imp_tm _ s0 s1 =>
-        congr_imp_tm (extRen_tm xi_tm zeta_tm Eq_tm s0)
-          (extRen_tm xi_tm zeta_tm Eq_tm s1)
-    | forall_tm _ s s0 =>
-        congr_forall_tm (eq_refl s)
-          (extRen_tm (upRen_tm_tm xi_tm) (upRen_tm_tm zeta_tm)
-             (upExtRen_tm_tm _ _ Eq_tm) s0)
-    | sort_tm _ s0 s1 =>
-        congr_sort_tm (eq_refl s0) (extRen_tm xi_tm zeta_tm Eq_tm s1)
-    end.
-
-  Lemma upExt_tm_tm {m : nat} {n_tm : nat} (sigma : fin m -> tm n_tm)
-    (tau : fin m -> tm n_tm) (Eq : forall x, sigma x = tau x) :
-    forall x, up_tm_tm sigma x = up_tm_tm tau x.
-  Proof.
-    exact (fun n =>
-             match n with
-             | Some fin_n => ap (ren_tm shift) (Eq fin_n)
-             | None => eq_refl
-             end).
-  Qed.
-
-  Lemma upExt_list_tm_tm {p : nat} {m : nat} {n_tm : nat}
-    (sigma : fin m -> tm n_tm) (tau : fin m -> tm n_tm)
-    (Eq : forall x, sigma x = tau x) :
-    forall x, up_list_tm_tm p sigma x = up_list_tm_tm p tau x.
-  Proof.
-    exact (fun n =>
-             scons_p_congr (fun n => eq_refl)
-               (fun n => ap (ren_tm (shift_p p)) (Eq n))).
-  Qed.
-
-  Fixpoint ext_tm {m_tm : nat} {n_tm : nat} (sigma_tm : fin m_tm -> tm n_tm)
-    (tau_tm : fin m_tm -> tm n_tm) (Eq_tm : forall x, sigma_tm x = tau_tm x)
-    (s : tm m_tm) {struct s} : subst_tm sigma_tm s = subst_tm tau_tm s :=
-    match s with
-    | var_tm _ s0 => Eq_tm s0
-    | lam_tm _ s0 =>
-        congr_lam_tm
-          (ext_tm (up_tm_tm sigma_tm) (up_tm_tm tau_tm) (upExt_tm_tm _ _ Eq_tm)
-             s0)
-    | app_tm _ s0 s1 =>
-        congr_app_tm (ext_tm sigma_tm tau_tm Eq_tm s0)
-          (ext_tm sigma_tm tau_tm Eq_tm s1)
-    | z_tm _ => congr_z_tm
-    | s_tm _ s0 => congr_s_tm (ext_tm sigma_tm tau_tm Eq_tm s0)
-    | recN_tm _ s0 s1 s2 =>
-        congr_recN_tm (ext_tm sigma_tm tau_tm Eq_tm s0)
-          (ext_tm sigma_tm tau_tm Eq_tm s1) (ext_tm sigma_tm tau_tm Eq_tm s2)
-    | tt_tm _ => congr_tt_tm
-    | ff_tm _ => congr_ff_tm
-    | recB_tm _ s0 s1 s2 =>
-        congr_recB_tm (ext_tm sigma_tm tau_tm Eq_tm s0)
-          (ext_tm sigma_tm tau_tm Eq_tm s1) (ext_tm sigma_tm tau_tm Eq_tm s2)
-    | nil_tm _ => congr_nil_tm
-    | cons_tm _ s0 s1 =>
-        congr_cons_tm (ext_tm sigma_tm tau_tm Eq_tm s0)
-          (ext_tm sigma_tm tau_tm Eq_tm s1)
-    | recL_tm _ s0 s1 s2 =>
-        congr_recL_tm (ext_tm sigma_tm tau_tm Eq_tm s0)
-          (ext_tm sigma_tm tau_tm Eq_tm s1) (ext_tm sigma_tm tau_tm Eq_tm s2)
-    | pair_tm _ s0 s1 =>
-        congr_pair_tm (ext_tm sigma_tm tau_tm Eq_tm s0)
-          (ext_tm sigma_tm tau_tm Eq_tm s1)
-    | pi1_tm _ s0 => congr_pi1_tm (ext_tm sigma_tm tau_tm Eq_tm s0)
-    | pi2_tm _ s0 => congr_pi2_tm (ext_tm sigma_tm tau_tm Eq_tm s0)
-    | imp_tm _ s0 s1 =>
-        congr_imp_tm (ext_tm sigma_tm tau_tm Eq_tm s0)
-          (ext_tm sigma_tm tau_tm Eq_tm s1)
-    | forall_tm _ s s0 =>
-        congr_forall_tm (eq_refl s)
-          (ext_tm (up_tm_tm sigma_tm) (up_tm_tm tau_tm) (upExt_tm_tm _ _ Eq_tm)
-             s0)
-    | sort_tm _ s0 s1 =>
-        congr_sort_tm (eq_refl s0) (ext_tm sigma_tm tau_tm Eq_tm s1)
-    end.
-
-  Lemma up_ren_ren_tm_tm {k : nat} {l : nat} {m : nat} (xi : fin k -> fin l)
-    (zeta : fin l -> fin m) (rho : fin k -> fin m)
-    (Eq : forall x, funcomp zeta xi x = rho x) :
-    forall x, funcomp (upRen_tm_tm zeta) (upRen_tm_tm xi) x = upRen_tm_tm rho x.
-  Proof.
-    exact (up_ren_ren xi zeta rho Eq).
-  Qed.
-
-  Lemma up_ren_ren_list_tm_tm {p : nat} {k : nat} {l : nat} {m : nat}
-    (xi : fin k -> fin l) (zeta : fin l -> fin m) (rho : fin k -> fin m)
-    (Eq : forall x, funcomp zeta xi x = rho x) :
-    forall x,
-      funcomp (upRen_list_tm_tm p zeta) (upRen_list_tm_tm p xi) x =
-        upRen_list_tm_tm p rho x.
-  Proof.
-    exact (up_ren_ren_p Eq).
-  Qed.
-
-  Fixpoint compRenRen_tm {k_tm : nat} {l_tm : nat} {m_tm : nat}
-    (xi_tm : fin m_tm -> fin k_tm) (zeta_tm : fin k_tm -> fin l_tm)
-    (rho_tm : fin m_tm -> fin l_tm)
-    (Eq_tm : forall x, funcomp zeta_tm xi_tm x = rho_tm x) (s : tm m_tm) {struct
-                                                                            s} : ren_tm zeta_tm (ren_tm xi_tm s) = ren_tm rho_tm s :=
-    match s with
-    | var_tm _ s0 => ap (var_tm l_tm) (Eq_tm s0)
-    | lam_tm _ s0 =>
-        congr_lam_tm
-          (compRenRen_tm (upRen_tm_tm xi_tm) (upRen_tm_tm zeta_tm)
-             (upRen_tm_tm rho_tm) (up_ren_ren _ _ _ Eq_tm) s0)
-    | app_tm _ s0 s1 =>
-        congr_app_tm (compRenRen_tm xi_tm zeta_tm rho_tm Eq_tm s0)
-          (compRenRen_tm xi_tm zeta_tm rho_tm Eq_tm s1)
-    | z_tm _ => congr_z_tm
-    | s_tm _ s0 => congr_s_tm (compRenRen_tm xi_tm zeta_tm rho_tm Eq_tm s0)
-    | recN_tm _ s0 s1 s2 =>
-        congr_recN_tm (compRenRen_tm xi_tm zeta_tm rho_tm Eq_tm s0)
-          (compRenRen_tm xi_tm zeta_tm rho_tm Eq_tm s1)
-          (compRenRen_tm xi_tm zeta_tm rho_tm Eq_tm s2)
-    | tt_tm _ => congr_tt_tm
-    | ff_tm _ => congr_ff_tm
-    | recB_tm _ s0 s1 s2 =>
-        congr_recB_tm (compRenRen_tm xi_tm zeta_tm rho_tm Eq_tm s0)
-          (compRenRen_tm xi_tm zeta_tm rho_tm Eq_tm s1)
-          (compRenRen_tm xi_tm zeta_tm rho_tm Eq_tm s2)
-    | nil_tm _ => congr_nil_tm
-    | cons_tm _ s0 s1 =>
-        congr_cons_tm (compRenRen_tm xi_tm zeta_tm rho_tm Eq_tm s0)
-          (compRenRen_tm xi_tm zeta_tm rho_tm Eq_tm s1)
-    | recL_tm _ s0 s1 s2 =>
-        congr_recL_tm (compRenRen_tm xi_tm zeta_tm rho_tm Eq_tm s0)
-          (compRenRen_tm xi_tm zeta_tm rho_tm Eq_tm s1)
-          (compRenRen_tm xi_tm zeta_tm rho_tm Eq_tm s2)
-    | pair_tm _ s0 s1 =>
-        congr_pair_tm (compRenRen_tm xi_tm zeta_tm rho_tm Eq_tm s0)
-          (compRenRen_tm xi_tm zeta_tm rho_tm Eq_tm s1)
-    | pi1_tm _ s0 => congr_pi1_tm (compRenRen_tm xi_tm zeta_tm rho_tm Eq_tm s0)
-    | pi2_tm _ s0 => congr_pi2_tm (compRenRen_tm xi_tm zeta_tm rho_tm Eq_tm s0)
-    | imp_tm _ s0 s1 =>
-        congr_imp_tm (compRenRen_tm xi_tm zeta_tm rho_tm Eq_tm s0)
-          (compRenRen_tm xi_tm zeta_tm rho_tm Eq_tm s1)
-    | forall_tm _ s s0 =>
-        congr_forall_tm (eq_refl s)
-          (compRenRen_tm (upRen_tm_tm xi_tm) (upRen_tm_tm zeta_tm)
-             (upRen_tm_tm rho_tm) (up_ren_ren _ _ _ Eq_tm) s0)
-    | sort_tm _ s0 s1 =>
-        congr_sort_tm (eq_refl s0)
-          (compRenRen_tm xi_tm zeta_tm rho_tm Eq_tm s1)
-    end.
-
-  Lemma up_ren_subst_tm_tm {k : nat} {l : nat} {m_tm : nat}
-    (xi : fin k -> fin l) (tau : fin l -> tm m_tm) (theta : fin k -> tm m_tm)
-    (Eq : forall x, funcomp tau xi x = theta x) :
-    forall x, funcomp (up_tm_tm tau) (upRen_tm_tm xi) x = up_tm_tm theta x.
-  Proof.
-    exact (fun n =>
-             match n with
-             | Some fin_n => ap (ren_tm shift) (Eq fin_n)
-             | None => eq_refl
-             end).
-  Qed.
-
-  Lemma up_ren_subst_list_tm_tm {p : nat} {k : nat} {l : nat} {m_tm : nat}
-    (xi : fin k -> fin l) (tau : fin l -> tm m_tm) (theta : fin k -> tm m_tm)
-    (Eq : forall x, funcomp tau xi x = theta x) :
-    forall x,
-      funcomp (up_list_tm_tm p tau) (upRen_list_tm_tm p xi) x =
-        up_list_tm_tm p theta x.
-  Proof.
-    exact (fun n =>
-             eq_trans (scons_p_comp' _ _ _ n)
-               (scons_p_congr (fun z => scons_p_head' _ _ z)
-                  (fun z =>
-                     eq_trans (scons_p_tail' _ _ (xi z))
-                       (ap (ren_tm (shift_p p)) (Eq z))))).
-  Qed.
-
-  Fixpoint compRenSubst_tm {k_tm : nat} {l_tm : nat} {m_tm : nat}
-    (xi_tm : fin m_tm -> fin k_tm) (tau_tm : fin k_tm -> tm l_tm)
-    (theta_tm : fin m_tm -> tm l_tm)
-    (Eq_tm : forall x, funcomp tau_tm xi_tm x = theta_tm x) (s : tm m_tm) {struct
-                                                                             s} : subst_tm tau_tm (ren_tm xi_tm s) = subst_tm theta_tm s :=
-    match s with
-    | var_tm _ s0 => Eq_tm s0
-    | lam_tm _ s0 =>
-        congr_lam_tm
-          (compRenSubst_tm (upRen_tm_tm xi_tm) (up_tm_tm tau_tm)
-             (up_tm_tm theta_tm) (up_ren_subst_tm_tm _ _ _ Eq_tm) s0)
-    | app_tm _ s0 s1 =>
-        congr_app_tm (compRenSubst_tm xi_tm tau_tm theta_tm Eq_tm s0)
-          (compRenSubst_tm xi_tm tau_tm theta_tm Eq_tm s1)
-    | z_tm _ => congr_z_tm
-    | s_tm _ s0 => congr_s_tm (compRenSubst_tm xi_tm tau_tm theta_tm Eq_tm s0)
-    | recN_tm _ s0 s1 s2 =>
-        congr_recN_tm (compRenSubst_tm xi_tm tau_tm theta_tm Eq_tm s0)
-          (compRenSubst_tm xi_tm tau_tm theta_tm Eq_tm s1)
-          (compRenSubst_tm xi_tm tau_tm theta_tm Eq_tm s2)
-    | tt_tm _ => congr_tt_tm
-    | ff_tm _ => congr_ff_tm
-    | recB_tm _ s0 s1 s2 =>
-        congr_recB_tm (compRenSubst_tm xi_tm tau_tm theta_tm Eq_tm s0)
-          (compRenSubst_tm xi_tm tau_tm theta_tm Eq_tm s1)
-          (compRenSubst_tm xi_tm tau_tm theta_tm Eq_tm s2)
-    | nil_tm _ => congr_nil_tm
-    | cons_tm _ s0 s1 =>
-        congr_cons_tm (compRenSubst_tm xi_tm tau_tm theta_tm Eq_tm s0)
-          (compRenSubst_tm xi_tm tau_tm theta_tm Eq_tm s1)
-    | recL_tm _ s0 s1 s2 =>
-        congr_recL_tm (compRenSubst_tm xi_tm tau_tm theta_tm Eq_tm s0)
-          (compRenSubst_tm xi_tm tau_tm theta_tm Eq_tm s1)
-          (compRenSubst_tm xi_tm tau_tm theta_tm Eq_tm s2)
-    | pair_tm _ s0 s1 =>
-        congr_pair_tm (compRenSubst_tm xi_tm tau_tm theta_tm Eq_tm s0)
-          (compRenSubst_tm xi_tm tau_tm theta_tm Eq_tm s1)
-    | pi1_tm _ s0 =>
-        congr_pi1_tm (compRenSubst_tm xi_tm tau_tm theta_tm Eq_tm s0)
-    | pi2_tm _ s0 =>
-        congr_pi2_tm (compRenSubst_tm xi_tm tau_tm theta_tm Eq_tm s0)
-    | imp_tm _ s0 s1 =>
-        congr_imp_tm (compRenSubst_tm xi_tm tau_tm theta_tm Eq_tm s0)
-          (compRenSubst_tm xi_tm tau_tm theta_tm Eq_tm s1)
-    | forall_tm _ s s0 =>
-        congr_forall_tm (eq_refl s)
-          (compRenSubst_tm (upRen_tm_tm xi_tm) (up_tm_tm tau_tm)
-             (up_tm_tm theta_tm) (up_ren_subst_tm_tm _ _ _ Eq_tm) s0)
-    | sort_tm _ s0 s1 =>
-        congr_sort_tm (eq_refl s0)
-          (compRenSubst_tm xi_tm tau_tm theta_tm Eq_tm s1)
-    end.
-
-  Lemma up_subst_ren_tm_tm {k : nat} {l_tm : nat} {m_tm : nat}
-    (sigma : fin k -> tm l_tm) (zeta_tm : fin l_tm -> fin m_tm)
-    (theta : fin k -> tm m_tm)
-    (Eq : forall x, funcomp (ren_tm zeta_tm) sigma x = theta x) :
-    forall x,
-      funcomp (ren_tm (upRen_tm_tm zeta_tm)) (up_tm_tm sigma) x =
-        up_tm_tm theta x.
-  Proof.
-    exact (fun n =>
-             match n with
-             | Some fin_n =>
-                 eq_trans
-                   (compRenRen_tm shift (upRen_tm_tm zeta_tm)
-                      (funcomp shift zeta_tm) (fun x => eq_refl) (sigma fin_n))
-                   (eq_trans
-                      (eq_sym
-                         (compRenRen_tm zeta_tm shift (funcomp shift zeta_tm)
-                            (fun x => eq_refl) (sigma fin_n)))
-                      (ap (ren_tm shift) (Eq fin_n)))
-             | None => eq_refl
-             end).
-  Qed.
-
-  Lemma up_subst_ren_list_tm_tm {p : nat} {k : nat} {l_tm : nat} {m_tm : nat}
-    (sigma : fin k -> tm l_tm) (zeta_tm : fin l_tm -> fin m_tm)
-    (theta : fin k -> tm m_tm)
-    (Eq : forall x, funcomp (ren_tm zeta_tm) sigma x = theta x) :
-    forall x,
-      funcomp (ren_tm (upRen_list_tm_tm p zeta_tm)) (up_list_tm_tm p sigma) x =
-        up_list_tm_tm p theta x.
-  Proof.
-    exact (fun n =>
-             eq_trans (scons_p_comp' _ _ _ n)
-               (scons_p_congr
-                  (fun x => ap (var_tm (plus p m_tm)) (scons_p_head' _ _ x))
-                  (fun n =>
-                     eq_trans
-                       (compRenRen_tm (shift_p p) (upRen_list_tm_tm p zeta_tm)
-                          (funcomp (shift_p p) zeta_tm)
-                          (fun x => scons_p_tail' _ _ x) (sigma n))
-                       (eq_trans
-                          (eq_sym
-                             (compRenRen_tm zeta_tm (shift_p p)
-                                (funcomp (shift_p p) zeta_tm) (fun x => eq_refl)
-                                (sigma n))) (ap (ren_tm (shift_p p)) (Eq n)))))).
-  Qed.
-
-  Fixpoint compSubstRen_tm {k_tm : nat} {l_tm : nat} {m_tm : nat}
-    (sigma_tm : fin m_tm -> tm k_tm) (zeta_tm : fin k_tm -> fin l_tm)
-    (theta_tm : fin m_tm -> tm l_tm)
-    (Eq_tm : forall x, funcomp (ren_tm zeta_tm) sigma_tm x = theta_tm x)
-    (s : tm m_tm) {struct s} :
-    ren_tm zeta_tm (subst_tm sigma_tm s) = subst_tm theta_tm s :=
-    match s with
-    | var_tm _ s0 => Eq_tm s0
-    | lam_tm _ s0 =>
-        congr_lam_tm
-          (compSubstRen_tm (up_tm_tm sigma_tm) (upRen_tm_tm zeta_tm)
-             (up_tm_tm theta_tm) (up_subst_ren_tm_tm _ _ _ Eq_tm) s0)
-    | app_tm _ s0 s1 =>
-        congr_app_tm (compSubstRen_tm sigma_tm zeta_tm theta_tm Eq_tm s0)
-          (compSubstRen_tm sigma_tm zeta_tm theta_tm Eq_tm s1)
-    | z_tm _ => congr_z_tm
-    | s_tm _ s0 =>
-        congr_s_tm (compSubstRen_tm sigma_tm zeta_tm theta_tm Eq_tm s0)
-    | recN_tm _ s0 s1 s2 =>
-        congr_recN_tm (compSubstRen_tm sigma_tm zeta_tm theta_tm Eq_tm s0)
-          (compSubstRen_tm sigma_tm zeta_tm theta_tm Eq_tm s1)
-          (compSubstRen_tm sigma_tm zeta_tm theta_tm Eq_tm s2)
-    | tt_tm _ => congr_tt_tm
-    | ff_tm _ => congr_ff_tm
-    | recB_tm _ s0 s1 s2 =>
-        congr_recB_tm (compSubstRen_tm sigma_tm zeta_tm theta_tm Eq_tm s0)
-          (compSubstRen_tm sigma_tm zeta_tm theta_tm Eq_tm s1)
-          (compSubstRen_tm sigma_tm zeta_tm theta_tm Eq_tm s2)
-    | nil_tm _ => congr_nil_tm
-    | cons_tm _ s0 s1 =>
-        congr_cons_tm (compSubstRen_tm sigma_tm zeta_tm theta_tm Eq_tm s0)
-          (compSubstRen_tm sigma_tm zeta_tm theta_tm Eq_tm s1)
-    | recL_tm _ s0 s1 s2 =>
-        congr_recL_tm (compSubstRen_tm sigma_tm zeta_tm theta_tm Eq_tm s0)
-          (compSubstRen_tm sigma_tm zeta_tm theta_tm Eq_tm s1)
-          (compSubstRen_tm sigma_tm zeta_tm theta_tm Eq_tm s2)
-    | pair_tm _ s0 s1 =>
-        congr_pair_tm (compSubstRen_tm sigma_tm zeta_tm theta_tm Eq_tm s0)
-          (compSubstRen_tm sigma_tm zeta_tm theta_tm Eq_tm s1)
-    | pi1_tm _ s0 =>
-        congr_pi1_tm (compSubstRen_tm sigma_tm zeta_tm theta_tm Eq_tm s0)
-    | pi2_tm _ s0 =>
-        congr_pi2_tm (compSubstRen_tm sigma_tm zeta_tm theta_tm Eq_tm s0)
-    | imp_tm _ s0 s1 =>
-        congr_imp_tm (compSubstRen_tm sigma_tm zeta_tm theta_tm Eq_tm s0)
-          (compSubstRen_tm sigma_tm zeta_tm theta_tm Eq_tm s1)
-    | forall_tm _ s s0 =>
-        congr_forall_tm (eq_refl s)
-          (compSubstRen_tm (up_tm_tm sigma_tm) (upRen_tm_tm zeta_tm)
-             (up_tm_tm theta_tm) (up_subst_ren_tm_tm _ _ _ Eq_tm) s0)
-    | sort_tm _ s0 s1 =>
-        congr_sort_tm (eq_refl s0)
-          (compSubstRen_tm sigma_tm zeta_tm theta_tm Eq_tm s1)
-    end.
-
-  Lemma up_subst_subst_tm_tm {k : nat} {l_tm : nat} {m_tm : nat}
-    (sigma : fin k -> tm l_tm) (tau_tm : fin l_tm -> tm m_tm)
-    (theta : fin k -> tm m_tm)
-    (Eq : forall x, funcomp (subst_tm tau_tm) sigma x = theta x) :
-    forall x,
-      funcomp (subst_tm (up_tm_tm tau_tm)) (up_tm_tm sigma) x = up_tm_tm theta x.
-  Proof.
-    exact (fun n =>
-             match n with
-             | Some fin_n =>
-                 eq_trans
-                   (compRenSubst_tm shift (up_tm_tm tau_tm)
-                      (funcomp (up_tm_tm tau_tm) shift) (fun x => eq_refl)
-                      (sigma fin_n))
-                   (eq_trans
-                      (eq_sym
-                         (compSubstRen_tm tau_tm shift
-                            (funcomp (ren_tm shift) tau_tm) (fun x => eq_refl)
-                            (sigma fin_n))) (ap (ren_tm shift) (Eq fin_n)))
-             | None => eq_refl
-             end).
-  Qed.
-
-  Lemma up_subst_subst_list_tm_tm {p : nat} {k : nat} {l_tm : nat} {m_tm : nat}
-    (sigma : fin k -> tm l_tm) (tau_tm : fin l_tm -> tm m_tm)
-    (theta : fin k -> tm m_tm)
-    (Eq : forall x, funcomp (subst_tm tau_tm) sigma x = theta x) :
-    forall x,
-      funcomp (subst_tm (up_list_tm_tm p tau_tm)) (up_list_tm_tm p sigma) x =
-        up_list_tm_tm p theta x.
-  Proof.
-    exact (fun n =>
-             eq_trans
-               (scons_p_comp' (funcomp (var_tm (plus p l_tm)) (zero_p p)) _ _ n)
-               (scons_p_congr
-                  (fun x => scons_p_head' _ (fun z => ren_tm (shift_p p) _) x)
-                  (fun n =>
-                     eq_trans
-                       (compRenSubst_tm (shift_p p) (up_list_tm_tm p tau_tm)
-                          (funcomp (up_list_tm_tm p tau_tm) (shift_p p))
-                          (fun x => eq_refl) (sigma n))
-                       (eq_trans
-                          (eq_sym
-                             (compSubstRen_tm tau_tm (shift_p p) _
-                                (fun x => eq_sym (scons_p_tail' _ _ x)) (sigma n)))
-                          (ap (ren_tm (shift_p p)) (Eq n)))))).
-  Qed.
-
-  Fixpoint compSubstSubst_tm {k_tm : nat} {l_tm : nat} {m_tm : nat}
-    (sigma_tm : fin m_tm -> tm k_tm) (tau_tm : fin k_tm -> tm l_tm)
-    (theta_tm : fin m_tm -> tm l_tm)
-    (Eq_tm : forall x, funcomp (subst_tm tau_tm) sigma_tm x = theta_tm x)
-    (s : tm m_tm) {struct s} :
-    subst_tm tau_tm (subst_tm sigma_tm s) = subst_tm theta_tm s :=
-    match s with
-    | var_tm _ s0 => Eq_tm s0
-    | lam_tm _ s0 =>
-        congr_lam_tm
-          (compSubstSubst_tm (up_tm_tm sigma_tm) (up_tm_tm tau_tm)
-             (up_tm_tm theta_tm) (up_subst_subst_tm_tm _ _ _ Eq_tm) s0)
-    | app_tm _ s0 s1 =>
-        congr_app_tm (compSubstSubst_tm sigma_tm tau_tm theta_tm Eq_tm s0)
-          (compSubstSubst_tm sigma_tm tau_tm theta_tm Eq_tm s1)
-    | z_tm _ => congr_z_tm
-    | s_tm _ s0 =>
-        congr_s_tm (compSubstSubst_tm sigma_tm tau_tm theta_tm Eq_tm s0)
-    | recN_tm _ s0 s1 s2 =>
-        congr_recN_tm (compSubstSubst_tm sigma_tm tau_tm theta_tm Eq_tm s0)
-          (compSubstSubst_tm sigma_tm tau_tm theta_tm Eq_tm s1)
-          (compSubstSubst_tm sigma_tm tau_tm theta_tm Eq_tm s2)
-    | tt_tm _ => congr_tt_tm
-    | ff_tm _ => congr_ff_tm
-    | recB_tm _ s0 s1 s2 =>
-        congr_recB_tm (compSubstSubst_tm sigma_tm tau_tm theta_tm Eq_tm s0)
-          (compSubstSubst_tm sigma_tm tau_tm theta_tm Eq_tm s1)
-          (compSubstSubst_tm sigma_tm tau_tm theta_tm Eq_tm s2)
-    | nil_tm _ => congr_nil_tm
-    | cons_tm _ s0 s1 =>
-        congr_cons_tm (compSubstSubst_tm sigma_tm tau_tm theta_tm Eq_tm s0)
-          (compSubstSubst_tm sigma_tm tau_tm theta_tm Eq_tm s1)
-    | recL_tm _ s0 s1 s2 =>
-        congr_recL_tm (compSubstSubst_tm sigma_tm tau_tm theta_tm Eq_tm s0)
-          (compSubstSubst_tm sigma_tm tau_tm theta_tm Eq_tm s1)
-          (compSubstSubst_tm sigma_tm tau_tm theta_tm Eq_tm s2)
-    | pair_tm _ s0 s1 =>
-        congr_pair_tm (compSubstSubst_tm sigma_tm tau_tm theta_tm Eq_tm s0)
-          (compSubstSubst_tm sigma_tm tau_tm theta_tm Eq_tm s1)
-    | pi1_tm _ s0 =>
-        congr_pi1_tm (compSubstSubst_tm sigma_tm tau_tm theta_tm Eq_tm s0)
-    | pi2_tm _ s0 =>
-        congr_pi2_tm (compSubstSubst_tm sigma_tm tau_tm theta_tm Eq_tm s0)
-    | imp_tm _ s0 s1 =>
-        congr_imp_tm (compSubstSubst_tm sigma_tm tau_tm theta_tm Eq_tm s0)
-          (compSubstSubst_tm sigma_tm tau_tm theta_tm Eq_tm s1)
-    | forall_tm _ s s0 =>
-        congr_forall_tm (eq_refl s)
-          (compSubstSubst_tm (up_tm_tm sigma_tm) (up_tm_tm tau_tm)
-             (up_tm_tm theta_tm) (up_subst_subst_tm_tm _ _ _ Eq_tm) s0)
-    | sort_tm _ s0 s1 =>
-        congr_sort_tm (eq_refl s0)
-          (compSubstSubst_tm sigma_tm tau_tm theta_tm Eq_tm s1)
-    end.
-
-  Lemma renRen_tm {k_tm : nat} {l_tm : nat} {m_tm : nat}
-    (xi_tm : fin m_tm -> fin k_tm) (zeta_tm : fin k_tm -> fin l_tm)
-    (s : tm m_tm) :
-    ren_tm zeta_tm (ren_tm xi_tm s) = ren_tm (funcomp zeta_tm xi_tm) s.
-  Proof.
-    exact (compRenRen_tm xi_tm zeta_tm _ (fun n => eq_refl) s).
-  Qed.
-
-  Lemma renRen'_tm_pointwise {k_tm : nat} {l_tm : nat} {m_tm : nat}
-    (xi_tm : fin m_tm -> fin k_tm) (zeta_tm : fin k_tm -> fin l_tm) :
-    pointwise_relation _ eq (funcomp (ren_tm zeta_tm) (ren_tm xi_tm))
-      (ren_tm (funcomp zeta_tm xi_tm)).
-  Proof.
-    exact (fun s => compRenRen_tm xi_tm zeta_tm _ (fun n => eq_refl) s).
-  Qed.
-
-  Lemma renSubst_tm {k_tm : nat} {l_tm : nat} {m_tm : nat}
-    (xi_tm : fin m_tm -> fin k_tm) (tau_tm : fin k_tm -> tm l_tm) (s : tm m_tm)
-    : subst_tm tau_tm (ren_tm xi_tm s) = subst_tm (funcomp tau_tm xi_tm) s.
-  Proof.
-    exact (compRenSubst_tm xi_tm tau_tm _ (fun n => eq_refl) s).
-  Qed.
-
-  Lemma renSubst_tm_pointwise {k_tm : nat} {l_tm : nat} {m_tm : nat}
-    (xi_tm : fin m_tm -> fin k_tm) (tau_tm : fin k_tm -> tm l_tm) :
-    pointwise_relation _ eq (funcomp (subst_tm tau_tm) (ren_tm xi_tm))
-      (subst_tm (funcomp tau_tm xi_tm)).
-  Proof.
-    exact (fun s => compRenSubst_tm xi_tm tau_tm _ (fun n => eq_refl) s).
-  Qed.
-
-  Lemma substRen_tm {k_tm : nat} {l_tm : nat} {m_tm : nat}
-    (sigma_tm : fin m_tm -> tm k_tm) (zeta_tm : fin k_tm -> fin l_tm)
-    (s : tm m_tm) :
-    ren_tm zeta_tm (subst_tm sigma_tm s) =
-      subst_tm (funcomp (ren_tm zeta_tm) sigma_tm) s.
-  Proof.
-    exact (compSubstRen_tm sigma_tm zeta_tm _ (fun n => eq_refl) s).
-  Qed.
-
-  Lemma substRen_tm_pointwise {k_tm : nat} {l_tm : nat} {m_tm : nat}
-    (sigma_tm : fin m_tm -> tm k_tm) (zeta_tm : fin k_tm -> fin l_tm) :
-    pointwise_relation _ eq (funcomp (ren_tm zeta_tm) (subst_tm sigma_tm))
-      (subst_tm (funcomp (ren_tm zeta_tm) sigma_tm)).
-  Proof.
-    exact (fun s => compSubstRen_tm sigma_tm zeta_tm _ (fun n => eq_refl) s).
-  Qed.
-
-  Lemma substSubst_tm {k_tm : nat} {l_tm : nat} {m_tm : nat}
-    (sigma_tm : fin m_tm -> tm k_tm) (tau_tm : fin k_tm -> tm l_tm)
-    (s : tm m_tm) :
-    subst_tm tau_tm (subst_tm sigma_tm s) =
-      subst_tm (funcomp (subst_tm tau_tm) sigma_tm) s.
-  Proof.
-    exact (compSubstSubst_tm sigma_tm tau_tm _ (fun n => eq_refl) s).
-  Qed.
-
-  Lemma substSubst_tm_pointwise {k_tm : nat} {l_tm : nat} {m_tm : nat}
-    (sigma_tm : fin m_tm -> tm k_tm) (tau_tm : fin k_tm -> tm l_tm) :
-    pointwise_relation _ eq (funcomp (subst_tm tau_tm) (subst_tm sigma_tm))
-      (subst_tm (funcomp (subst_tm tau_tm) sigma_tm)).
-  Proof.
-    exact (fun s => compSubstSubst_tm sigma_tm tau_tm _ (fun n => eq_refl) s).
-  Qed.
-
-  Lemma rinstInst_up_tm_tm {m : nat} {n_tm : nat} (xi : fin m -> fin n_tm)
-    (sigma : fin m -> tm n_tm)
-    (Eq : forall x, funcomp (var_tm n_tm) xi x = sigma x) :
-    forall x, funcomp (var_tm (S n_tm)) (upRen_tm_tm xi) x = up_tm_tm sigma x.
-  Proof.
-    exact (fun n =>
-             match n with
-             | Some fin_n => ap (ren_tm shift) (Eq fin_n)
-             | None => eq_refl
-             end).
-  Qed.
-
-  Lemma rinstInst_up_list_tm_tm {p : nat} {m : nat} {n_tm : nat}
-    (xi : fin m -> fin n_tm) (sigma : fin m -> tm n_tm)
-    (Eq : forall x, funcomp (var_tm n_tm) xi x = sigma x) :
-    forall x,
-      funcomp (var_tm (plus p n_tm)) (upRen_list_tm_tm p xi) x =
-        up_list_tm_tm p sigma x.
-  Proof.
-    exact (fun n =>
-             eq_trans (scons_p_comp' _ _ (var_tm (plus p n_tm)) n)
-               (scons_p_congr (fun z => eq_refl)
-                  (fun n => ap (ren_tm (shift_p p)) (Eq n)))).
-  Qed.
-
-  Fixpoint rinst_inst_tm {m_tm : nat} {n_tm : nat}
-    (xi_tm : fin m_tm -> fin n_tm) (sigma_tm : fin m_tm -> tm n_tm)
-    (Eq_tm : forall x, funcomp (var_tm n_tm) xi_tm x = sigma_tm x) (s : tm m_tm)
-    {struct s} : ren_tm xi_tm s = subst_tm sigma_tm s :=
-    match s with
-    | var_tm _ s0 => Eq_tm s0
-    | lam_tm _ s0 =>
-        congr_lam_tm
-          (rinst_inst_tm (upRen_tm_tm xi_tm) (up_tm_tm sigma_tm)
-             (rinstInst_up_tm_tm _ _ Eq_tm) s0)
-    | app_tm _ s0 s1 =>
-        congr_app_tm (rinst_inst_tm xi_tm sigma_tm Eq_tm s0)
-          (rinst_inst_tm xi_tm sigma_tm Eq_tm s1)
-    | z_tm _ => congr_z_tm
-    | s_tm _ s0 => congr_s_tm (rinst_inst_tm xi_tm sigma_tm Eq_tm s0)
-    | recN_tm _ s0 s1 s2 =>
-        congr_recN_tm (rinst_inst_tm xi_tm sigma_tm Eq_tm s0)
-          (rinst_inst_tm xi_tm sigma_tm Eq_tm s1)
-          (rinst_inst_tm xi_tm sigma_tm Eq_tm s2)
-    | tt_tm _ => congr_tt_tm
-    | ff_tm _ => congr_ff_tm
-    | recB_tm _ s0 s1 s2 =>
-        congr_recB_tm (rinst_inst_tm xi_tm sigma_tm Eq_tm s0)
-          (rinst_inst_tm xi_tm sigma_tm Eq_tm s1)
-          (rinst_inst_tm xi_tm sigma_tm Eq_tm s2)
-    | nil_tm _ => congr_nil_tm
-    | cons_tm _ s0 s1 =>
-        congr_cons_tm (rinst_inst_tm xi_tm sigma_tm Eq_tm s0)
-          (rinst_inst_tm xi_tm sigma_tm Eq_tm s1)
-    | recL_tm _ s0 s1 s2 =>
-        congr_recL_tm (rinst_inst_tm xi_tm sigma_tm Eq_tm s0)
-          (rinst_inst_tm xi_tm sigma_tm Eq_tm s1)
-          (rinst_inst_tm xi_tm sigma_tm Eq_tm s2)
-    | pair_tm _ s0 s1 =>
-        congr_pair_tm (rinst_inst_tm xi_tm sigma_tm Eq_tm s0)
-          (rinst_inst_tm xi_tm sigma_tm Eq_tm s1)
-    | pi1_tm _ s0 => congr_pi1_tm (rinst_inst_tm xi_tm sigma_tm Eq_tm s0)
-    | pi2_tm _ s0 => congr_pi2_tm (rinst_inst_tm xi_tm sigma_tm Eq_tm s0)
-    | imp_tm _ s0 s1 =>
-        congr_imp_tm (rinst_inst_tm xi_tm sigma_tm Eq_tm s0)
-          (rinst_inst_tm xi_tm sigma_tm Eq_tm s1)
-    | forall_tm _ s s0 =>
-        congr_forall_tm (eq_refl s)
-          (rinst_inst_tm (upRen_tm_tm xi_tm) (up_tm_tm sigma_tm)
-             (rinstInst_up_tm_tm _ _ Eq_tm) s0)
-    | sort_tm _ s0 s1 =>
-        congr_sort_tm (eq_refl s0) (rinst_inst_tm xi_tm sigma_tm Eq_tm s1)
-    end.
-
-  Lemma rinstInst'_tm {m_tm : nat} {n_tm : nat} (xi_tm : fin m_tm -> fin n_tm)
-    (s : tm m_tm) : ren_tm xi_tm s = subst_tm (funcomp (var_tm n_tm) xi_tm) s.
-  Proof.
-    exact (rinst_inst_tm xi_tm _ (fun n => eq_refl) s).
-  Qed.
-
-  Lemma rinstInst'_tm_pointwise {m_tm : nat} {n_tm : nat}
-    (xi_tm : fin m_tm -> fin n_tm) :
-    pointwise_relation _ eq (ren_tm xi_tm)
-      (subst_tm (funcomp (var_tm n_tm) xi_tm)).
-  Proof.
-    exact (fun s => rinst_inst_tm xi_tm _ (fun n => eq_refl) s).
-  Qed.
-
-  Lemma instId'_tm {m_tm : nat} (s : tm m_tm) : subst_tm (var_tm m_tm) s = s.
-  Proof.
-    exact (idSubst_tm (var_tm m_tm) (fun n => eq_refl) s).
-  Qed.
-
-  Lemma instId'_tm_pointwise {m_tm : nat} :
-    pointwise_relation _ eq (subst_tm (var_tm m_tm)) id.
-  Proof.
-    exact (fun s => idSubst_tm (var_tm m_tm) (fun n => eq_refl) s).
-  Qed.
-
-  Lemma rinstId'_tm {m_tm : nat} (s : tm m_tm) : ren_tm id s = s.
-  Proof.
-    exact (eq_ind_r (fun t => t = s) (instId'_tm s) (rinstInst'_tm id s)).
-  Qed.
-
-  Lemma rinstId'_tm_pointwise {m_tm : nat} :
-    pointwise_relation _ eq (@ren_tm m_tm m_tm id) id.
-  Proof.
-    exact (fun s => eq_ind_r (fun t => t = s) (instId'_tm s) (rinstInst'_tm id s)).
-  Qed.
-
-  Lemma varL'_tm {m_tm : nat} {n_tm : nat} (sigma_tm : fin m_tm -> tm n_tm)
-    (x : fin m_tm) : subst_tm sigma_tm (var_tm m_tm x) = sigma_tm x.
-  Proof.
-    exact (eq_refl).
-  Qed.
-
-  Lemma varL'_tm_pointwise {m_tm : nat} {n_tm : nat}
-    (sigma_tm : fin m_tm -> tm n_tm) :
-    pointwise_relation _ eq (funcomp (subst_tm sigma_tm) (var_tm m_tm))
-      sigma_tm.
-  Proof.
-    exact (fun x => eq_refl).
-  Qed.
-
-  Lemma varLRen'_tm {m_tm : nat} {n_tm : nat} (xi_tm : fin m_tm -> fin n_tm)
-    (x : fin m_tm) : ren_tm xi_tm (var_tm m_tm x) = var_tm n_tm (xi_tm x).
-  Proof.
-    exact (eq_refl).
-  Qed.
-
-  Lemma varLRen'_tm_pointwise {m_tm : nat} {n_tm : nat}
-    (xi_tm : fin m_tm -> fin n_tm) :
-    pointwise_relation _ eq (funcomp (ren_tm xi_tm) (var_tm m_tm))
-      (funcomp (var_tm n_tm) xi_tm).
-  Proof.
-    exact (fun x => eq_refl).
-  Qed.
-
-  Class Up_tm X Y :=
-    up_tm : X -> Y.
-
-  #[global]
-    Instance Subst_tm  {m_tm n_tm : nat}: (Subst1 _ _ _) := (@subst_tm m_tm n_tm).
-
-  #[global]
-    Instance Up_tm_tm  {m n_tm : nat}: (Up_tm _ _) := (@up_tm_tm m n_tm).
-
-  #[global]
-    Instance Ren_tm  {m_tm n_tm : nat}: (Ren1 _ _ _) := (@ren_tm m_tm n_tm).
-
-  #[global]
-    Instance VarInstance_tm  {n_tm : nat}: (Var _ _) := (@var_tm n_tm).
-
-  Notation "s [ sigma_tm ]" := (subst_tm sigma_tm s)
-                                 ( at level 7, left associativity, only printing)  : subst_scope.
-
-  Notation "↑__tm" := up_tm (only printing)  : subst_scope.
-
-  Notation "↑__tm" := up_tm_tm (only printing)  : subst_scope.
-
-  Notation "s ⟨ xi_tm ⟩" := (ren_tm xi_tm s)
-                              ( at level 7, left associativity, only printing)  : subst_scope.
-
-  Notation "'var'" := var_tm ( at level 1, only printing)  : subst_scope.
-
-  Notation "x '__tm'" := (@ids _ _ VarInstance_tm x)
-                           ( at level 5, format "x __tm", only printing)  : subst_scope.
-
-  Notation "x '__tm'" := (var_tm x) ( at level 5, format "x __tm")  :
-      subst_scope.
-
-  #[global]
-    Instance subst_tm_morphism  {m_tm : nat} {n_tm : nat}:
-    (Proper (respectful (pointwise_relation _ eq) (respectful eq eq))
-       (@subst_tm m_tm n_tm)).
-  Proof.
-    exact (fun f_tm g_tm Eq_tm s t Eq_st =>
-             eq_ind s (fun t' => subst_tm f_tm s = subst_tm g_tm t')
-               (ext_tm f_tm g_tm Eq_tm s) t Eq_st).
-  Qed.
-
-  #[global]
-    Instance subst_tm_morphism2  {m_tm : nat} {n_tm : nat}:
-    (Proper (respectful (pointwise_relation _ eq) (pointwise_relation _ eq))
-       (@subst_tm m_tm n_tm)).
-  Proof.
-    exact (fun f_tm g_tm Eq_tm s => ext_tm f_tm g_tm Eq_tm s).
-  Qed.
-
-  #[global]
-    Instance ren_tm_morphism  {m_tm : nat} {n_tm : nat}:
-    (Proper (respectful (pointwise_relation _ eq) (respectful eq eq))
-       (@ren_tm m_tm n_tm)).
-  Proof.
-    exact (fun f_tm g_tm Eq_tm s t Eq_st =>
-             eq_ind s (fun t' => ren_tm f_tm s = ren_tm g_tm t')
-               (extRen_tm f_tm g_tm Eq_tm s) t Eq_st).
-  Qed.
-
-  #[global]
-    Instance ren_tm_morphism2  {m_tm : nat} {n_tm : nat}:
-    (Proper (respectful (pointwise_relation _ eq) (pointwise_relation _ eq))
-       (@ren_tm m_tm n_tm)).
-  Proof.
-    exact (fun f_tm g_tm Eq_tm s => extRen_tm f_tm g_tm Eq_tm s).
-  Qed.
-
-  Ltac auto_unfold := repeat
-                        unfold VarInstance_tm, Var, ids, Ren_tm, Ren1, ren1,
-      Up_tm_tm, Up_tm, up_tm, Subst_tm, Subst1, subst1.
-
-  Tactic Notation "auto_unfold" "in" "*" := repeat
-                                              unfold VarInstance_tm, Var, ids,
-      Ren_tm, Ren1, ren1, Up_tm_tm,
-      Up_tm, up_tm, Subst_tm, Subst1,
-      subst1 in *.
-
-  Ltac asimpl' := repeat (first
-                            [ progress setoid_rewrite substSubst_tm_pointwise
-                            | progress setoid_rewrite substSubst_tm
-                            | progress setoid_rewrite substRen_tm_pointwise
-                            | progress setoid_rewrite substRen_tm
-                            | progress setoid_rewrite renSubst_tm_pointwise
-                            | progress setoid_rewrite renSubst_tm
-                            | progress setoid_rewrite renRen'_tm_pointwise
-                            | progress setoid_rewrite renRen_tm
-                            | progress setoid_rewrite varLRen'_tm_pointwise
-                            | progress setoid_rewrite varLRen'_tm
-                            | progress setoid_rewrite varL'_tm_pointwise
-                            | progress setoid_rewrite varL'_tm
-                            | progress setoid_rewrite rinstId'_tm_pointwise
-                            | progress setoid_rewrite rinstId'_tm
-                            | progress setoid_rewrite instId'_tm_pointwise
-                            | progress setoid_rewrite instId'_tm
-                            | progress
-                                unfold up_list_tm_tm, up_tm_tm, upRen_list_tm_tm,
-                              upRen_tm_tm, up_ren
-                            | progress cbn[subst_tm ren_tm]
-                            | progress fsimpl ]).
-
-  Ltac asimpl := check_no_evars;
-                 repeat
-                   unfold VarInstance_tm, Var, ids, Ren_tm, Ren1, ren1,
-                   Up_tm_tm, Up_tm, up_tm, Subst_tm, Subst1, subst1 in *;
-                 asimpl'; minimize.
-
-  Tactic Notation "asimpl" "in" hyp(J) := revert J; asimpl; intros J.
-
-  Tactic Notation "auto_case" := auto_case ltac:(asimpl; cbn; eauto).
-
-  Ltac substify := auto_unfold; try setoid_rewrite rinstInst'_tm_pointwise;
-                   try setoid_rewrite rinstInst'_tm.
-
-  Ltac renamify := auto_unfold; try setoid_rewrite_left rinstInst'_tm_pointwise;
-                   try setoid_rewrite_left rinstInst'_tm.
-
-End Core.
-
-Module Extra.
-
-  Import
-    Core.
-
-  Arguments var_tm {n_tm}.
-
-  Arguments sort_tm {n_tm}.
-
-  Arguments forall_tm {n_tm}.
-
-  Arguments imp_tm {n_tm}.
-
-  Arguments pi2_tm {n_tm}.
-
-  Arguments pi1_tm {n_tm}.
-
-  Arguments pair_tm {n_tm}.
-
-  Arguments recL_tm {n_tm}.
-
-  Arguments cons_tm {n_tm}.
-
-  Arguments nil_tm {n_tm}.
-
-  Arguments recB_tm {n_tm}.
-
-  Arguments ff_tm {n_tm}.
-
-  Arguments tt_tm {n_tm}.
-
-  Arguments recN_tm {n_tm}.
-
-  Arguments s_tm {n_tm}.
-
-  Arguments z_tm {n_tm}.
-
-  Arguments app_tm {n_tm}.
-
-  Arguments lam_tm {n_tm}.
-
-  #[global] Hint Opaque subst_tm: rewrite.
-
-  #[global] Hint Opaque ren_tm: rewrite.
-
-End Extra.
-
-Module interface.
-
-  Export Core.
-
-  Export Extra.
-
-End interface.
-
-Export interface.
-
+From Stdlib Require Import Nat List.
+Import ListNotations.
+(*Require Import fintype.
+Import CombineNotations.*)
+From Equations Require Import Equations.
+From Stdlib Require Import Wellfounded.Lexicographic_Exponentiation.
+From Stdlib Require Import Program.Equality.
+
+Inductive st : Type :=
+| nat_st : st
+| bool_st : st
+| list_st : st -> st
+| prop_st : st
+| unit_st : st
+| empty_st : st
+| fun_st : st -> st -> st
+| prod_st : st -> st -> st
+| coprod_st : st -> st -> st.
+
+Notation ℕₛ := nat_st.
+Notation 𝔹ₛ := bool_st.
+Notation 𝕃ₛ := list_st.
+Notation ℙₛ := prop_st.
+Notation "𝟙ₛ" := unit_st.
+Notation "𝟘ₛ" := empty_st.
+Notation "s →ₛ s'" := (fun_st s s') (at level 60, right associativity).
+Notation "s ×ₛ s'" := (prod_st s s') (at level 53, right associativity).
+Notation "s +ₛ s'" := (coprod_st s s') (at level 55, right associativity).
+
+Definition HOL_ctx : Type := list st.
+
+Inductive HOL_var : st -> HOL_ctx -> Type :=
+| vz_tm : forall (s : st) (Γ : HOL_ctx), HOL_var s (s :: Γ)
+| vs_tm : forall {s : st} {Γ : HOL_ctx} (s' : st),
+    HOL_var s Γ -> HOL_var s (s' :: Γ).
+
+Notation "s ∈ˢ Γ" := (HOL_var s Γ) (at level 65).
+Notation "s >>₀ Γ" := (vz_tm s Γ) (at level 55).
+Notation "s >>ₛ v" := (vs_tm s v) (at level 55, right associativity).
+
+Inductive tm : HOL_ctx -> st -> Type :=
+| var_tm : forall {Γ : HOL_ctx} {s : st}, s ∈ˢ Γ -> tm Γ s
+| lam_tm : forall {Γ : HOL_ctx} (s : st) {s' : st},
+    tm (s :: Γ) s' -> tm Γ (s →ₛ s')
+| app_tm : forall {Γ : HOL_ctx} {s s' : st},
+    tm Γ (s →ₛ s') -> tm Γ s -> tm Γ s'
+| unit_tm : forall {Γ : HOL_ctx}, tm Γ 𝟙ₛ
+| pair_tm : forall {Γ : HOL_ctx} {s s' : st},
+    tm Γ s -> tm Γ s' -> tm Γ (s ×ₛ s')
+| proj1_tm : forall {Γ : HOL_ctx} {s s' : st},
+    tm Γ (s ×ₛ s') -> tm Γ s
+| proj2_tm : forall {Γ : HOL_ctx} {s s' : st},
+    tm Γ (s ×ₛ s') -> tm Γ s'
+| empty_tm : forall {Γ : HOL_ctx} (s : st), tm Γ (𝟘ₛ →ₛ s)
+| coproj1_tm : forall {Γ : HOL_ctx} {s : st} (s' : st), tm Γ s -> tm Γ (s +ₛ s')
+| coproj2_tm : forall {Γ : HOL_ctx} (s : st) {s': st}, tm Γ s' -> tm Γ (s +ₛ s')
+| cases_tm : forall {Γ : HOL_ctx} {s s' : st} {s'' : st},
+    tm Γ (s +ₛ s') -> tm Γ (s →ₛ s'') -> tm Γ (s' →ₛ s'') -> tm Γ s''
+| z_tm : forall {Γ : HOL_ctx}, tm Γ ℕₛ
+| s_tm : forall {Γ : HOL_ctx}, tm Γ ℕₛ -> tm Γ ℕₛ
+| recN_tm : forall {Γ : HOL_ctx} {s : st},
+    tm Γ s -> tm Γ (ℕₛ →ₛ s →ₛ s) -> tm Γ ℕₛ -> tm Γ s
+| tt_tm : forall {Γ : HOL_ctx}, tm Γ 𝔹ₛ
+| ff_tm : forall {Γ : HOL_ctx}, tm Γ 𝔹ₛ
+| recB_tm : forall {Γ : HOL_ctx} {s : st},
+    tm Γ s -> tm Γ s -> tm Γ 𝔹ₛ -> tm Γ s
+| nil_tm : forall {Γ : HOL_ctx} {s : st}, tm Γ (𝕃ₛ s)
+| cons_tm : forall {Γ : HOL_ctx} {s : st},
+    tm Γ s -> tm Γ (𝕃ₛ s) -> tm Γ (𝕃ₛ s)
+| recL_tm : forall {Γ : HOL_ctx} {s : st} {s' : st},
+    tm Γ s -> tm Γ (s' →ₛ 𝕃ₛ s' →ₛ s →ₛ s) -> tm Γ (𝕃ₛ s') -> tm Γ s
+| imp_tm : forall {Γ : HOL_ctx}, tm Γ ℙₛ -> tm Γ ℙₛ -> tm Γ ℙₛ
+| forall_tm : forall {Γ : HOL_ctx} (s : st), tm (s :: Γ) ℙₛ -> tm Γ ℙₛ.
+
+Notation "Γ ⊢ₛ s" := (tm Γ s) (at level 63).
+Notation "⟦ v ⟧ₛ" := (var_tm v).
+Notation ƛₛ := lam_tm.
+Notation "t @ₛ u" := (app_tm t u) (at level 50).
+Notation "⟨⟩ₛ" := (unit_tm).
+Notation "⟨ t , u ⟩ₛ" := (pair_tm t u).
+Notation "π¹ₛ" := proj1_tm.
+Notation "π²ₛ" := proj2_tm.
+Notation "κ¹ₛ" := coproj1_tm.
+Notation "κ²ₛ" := coproj2_tm.
+Notation δₛ := (cases_tm).
+Notation "0ₛ" := z_tm.
+Notation Sₛ := s_tm.
+Notation recℕₛ := recN_tm.
+Notation "⊤ₛ" := tt_tm.
+Notation "⊥ₛ" := ff_tm.
+Notation rec𝔹ₛ := recB_tm.
+Notation "[]ₛ" := nil_tm.
+Notation "t ::ₛ u" := (cons_tm t u) (at level 55, right associativity).
+Notation rec𝕃ₛ := recL_tm.
+Notation "φ ⇒ₛ ψ" := (imp_tm φ ψ) (at level 61, right associativity).
+Notation "∀ₛ" := forall_tm.
+
+Equations lift_var (Γ₀ Δ Γ₁ : HOL_ctx) (s : st) (v : HOL_var s (Γ₀ ++ Γ₁)) :
+  HOL_var s (Γ₀ ++ Δ ++ Γ₁) by wf (length Γ₀ + length Δ) lt :=
+  lift_var []        []       Γ₁ s v           := v ;
+  lift_var []        (δ :: Δ) Γ₁ s v           :=
+    δ >>ₛ lift_var [] Δ Γ₁ s v ;
+  lift_var (γ :: Γ₀) Δ        Γ₁ γ (γ >>₀ Γ) := γ >>₀ (Γ₀ ++ Δ ++ Γ₁) ;
+  lift_var (γ :: Γ₀) Δ        Γ₁ s (γ >>ₛ v) :=
+    γ >>ₛ (lift_var Γ₀ Δ Γ₁ s v).
+
+Equations lift_tm (Γ₀ Δ Γ₁ : HOL_ctx) (s : st) (t : Γ₀ ++ Γ₁ ⊢ₛ s) :
+  Γ₀ ++ Δ ++ Γ₁ ⊢ₛ s :=
+  lift_tm Γ₀ Δ Γ₁ s ⟦ v ⟧ₛ := ⟦ lift_var Γ₀ Δ Γ₁ s v ⟧ₛ ;
+  lift_tm Γ₀ Δ Γ₁ _ (ƛₛ s' t) :=
+    ƛₛ s' (lift_tm (s' :: Γ₀) Δ Γ₁ _ t) ;
+  lift_tm Γ₀ Δ Γ₁ s' (t @ₛ u) :=
+    (lift_tm Γ₀ Δ Γ₁ _ t) @ₛ (lift_tm Γ₀ Δ Γ₁ _ u) ;
+  lift_tm Γ₀ Δ Γ₁ _ ⟨⟩ₛ := ⟨⟩ₛ ;
+  lift_tm Γ₀ Δ Γ₁ _ ⟨ t , u ⟩ₛ :=
+    ⟨ lift_tm Γ₀ Δ Γ₁ _ t, lift_tm Γ₀ Δ Γ₁ _ u ⟩ₛ ;
+  lift_tm Γ₀ Δ Γ₁ _ (π¹ₛ t) :=
+    π¹ₛ (lift_tm Γ₀ Δ Γ₁ _ t) ;
+  lift_tm Γ₀ Δ Γ₁ _ (π²ₛ t) :=
+    π²ₛ (lift_tm Γ₀ Δ Γ₁ _ t) ;
+  lift_tm Γ₀ Δ Γ₁ _ (empty_tm s) := empty_tm s ;
+  lift_tm Γ₀ Δ Γ₁ _ (κ¹ₛ s' t) :=
+    κ¹ₛ s' (lift_tm Γ₀ Δ Γ₁ _ t) ;
+  lift_tm Γ₀ Δ Γ₁ _ (κ²ₛ s t) :=
+    κ²ₛ s (lift_tm Γ₀ Δ Γ₁ _ t) ;
+  lift_tm Γ₀ Δ Γ₁ _ (δₛ t u v) :=
+    δₛ (lift_tm Γ₀ Δ Γ₁ _ t) (lift_tm Γ₀ Δ Γ₁ _ u) (lift_tm Γ₀ Δ Γ₁ _ v);
+  lift_tm Γ₀ Δ Γ₁ _ 0ₛ := 0ₛ ;
+  lift_tm Γ₀ Δ Γ₁ _ (Sₛ t) := Sₛ (lift_tm Γ₀ Δ Γ₁ _ t) ;
+  lift_tm Γ₀ Δ Γ₁ _ (recℕₛ t u v) :=
+    recℕₛ (lift_tm Γ₀ Δ Γ₁ _ t) (lift_tm Γ₀ Δ Γ₁ _ u) (lift_tm Γ₀ Δ Γ₁ _ v);
+  lift_tm Γ₀ Δ Γ₁ _ ⊤ₛ := ⊤ₛ ;
+  lift_tm Γ₀ Δ Γ₁ _ ⊥ₛ := ⊥ₛ ;
+  lift_tm Γ₀ Δ Γ₁ _ (rec𝔹ₛ t u v) :=
+    rec𝔹ₛ (lift_tm Γ₀ Δ Γ₁ _ t) (lift_tm Γ₀ Δ Γ₁ _ u) (lift_tm Γ₀ Δ Γ₁ _ v) ;
+  lift_tm Γ₀ Δ Γ₁ _ []ₛ := []ₛ ;
+  lift_tm Γ₀ Δ Γ₁ _ (t ::ₛ u) :=
+    lift_tm Γ₀ Δ Γ₁ _ t ::ₛ lift_tm Γ₀ Δ Γ₁ _ u ;
+  lift_tm Γ₀ Δ Γ₁ _ (rec𝕃ₛ t u v) :=
+    rec𝕃ₛ (lift_tm Γ₀ Δ Γ₁ _ t) (lift_tm Γ₀ Δ Γ₁ _ u) (lift_tm Γ₀ Δ Γ₁ _ v) ;
+  lift_tm Γ₀ Δ Γ₁ _ (φ ⇒ₛ ψ) := lift_tm Γ₀ Δ Γ₁ ℙₛ φ ⇒ₛ lift_tm Γ₀ Δ Γ₁ ℙₛ ψ ;
+  lift_tm Γ₀ Δ Γ₁ _ (∀ₛ s' φ) := ∀ₛ s' (lift_tm (s' :: Γ₀) Δ Γ₁ ℙₛ φ).
+
+Inductive HOL_ren : HOL_ctx -> HOL_ctx -> Type :=
+| ren_nil : forall (Γ : HOL_ctx), HOL_ren Γ []
+| ren_cons : forall {Γ Δ : HOL_ctx} {s : st},
+     s ∈ˢ Γ -> HOL_ren Γ Δ -> HOL_ren Γ (s :: Δ).
+
+Notation "Γ ⇝ Δ" := (HOL_ren Γ Δ) (at level 65).
+Notation εᵣ := (ren_nil).
+Notation "v ::ᵣ vs" := (ren_cons v vs) (at level 60).
+
+Equations HOL_lift (Γ₀ Δ Γ₁ Δ' : HOL_ctx) (vars : Γ₀ ++ Γ₁ ⇝ Δ') :
+  Γ₀ ++ Δ ++ Γ₁ ⇝ Δ' :=
+  HOL_lift Γ₀ Δ Γ₁ Δ' (εᵣ _)   := εᵣ (Γ₀ ++ Δ ++ Γ₁) ;
+  HOL_lift Γ₀ Δ Γ₁ _  (v ::ᵣ vs) :=
+    lift_var Γ₀ Δ Γ₁ _ v ::ᵣ HOL_lift Γ₀ Δ Γ₁ _ vs.
+
+Definition up_ren {Γ Δ : HOL_ctx} (ξ : Γ ⇝ Δ) (s : st) : (s :: Γ ⇝ s :: Δ) :=
+  s >>₀ Γ ::ᵣ HOL_lift [] [s] Γ Δ ξ.
+
+Definition up_tm {Γ : HOL_ctx} {s : st} (t : Γ ⊢ₛ s) (s' : st) : s' :: Γ ⊢ₛ s :=
+  lift_tm [] [s'] Γ s t.
+
+Notation "t ↑ₛ s" := (up_tm t s) (at level 55).
+Notation "ξ ↑ᵣ s" := (up_ren ξ s) (at level 55).
+
+Equations id_ren (Γ : HOL_ctx) : Γ ⇝ Γ :=
+  id_ren [] := ren_nil [] ;
+  id_ren (s :: Γ) := (id_ren Γ) ↑ᵣ s.
+
+Equations ren_var (Γ Δ : HOL_ctx) (s : st) (ξ : Γ ⇝ Δ) (v : s ∈ˢ Δ) : s ∈ˢ Γ :=
+  ren_var Γ (s :: Δ) s (ξ₀ ::ᵣ ξ) (s >>₀ Δ) := ξ₀ ;
+  ren_var Γ (s :: Δ) _ (ξ₀ ::ᵣ ξ) (s >>ₛ v) := ren_var Γ Δ _ ξ v.
+
+Equations ren_tm (Γ Δ : HOL_ctx) (s : st) (ξ : Γ ⇝ Δ) (t : Δ ⊢ₛ s) :
+  Γ ⊢ₛ s :=
+  ren_tm Γ Δ _ ξ ⟦ v ⟧ₛ := ⟦ ren_var Γ Δ _ ξ v ⟧ₛ ;
+  ren_tm Γ Δ _ ξ (ƛₛ s' t) := ƛₛ s' (ren_tm (s' :: Γ) (s' :: Δ) _ (ξ ↑ᵣ s') t) ;
+  ren_tm Γ Δ _ ξ (t @ₛ u) := (ren_tm Γ Δ _ ξ t) @ₛ (ren_tm Γ Δ _ ξ u) ;
+  ren_tm Γ Δ _ ξ ⟨⟩ₛ := ⟨⟩ₛ ;
+  ren_tm Γ Δ _ ξ ⟨ t , u ⟩ₛ :=
+    ⟨ ren_tm Γ Δ _ ξ t, ren_tm Γ Δ _ ξ u ⟩ₛ ;
+  ren_tm Γ Δ _ ξ (π¹ₛ t) := π¹ₛ (ren_tm Γ Δ _ ξ t) ;
+  ren_tm Γ Δ _ ξ (π²ₛ t) := π²ₛ (ren_tm Γ Δ _ ξ t) ;
+  ren_tm Γ Δ _ ξ (empty_tm s) := empty_tm s ;
+  ren_tm Γ Δ _ ξ (κ¹ₛ _ t) := κ¹ₛ _ (ren_tm Γ Δ _ ξ t) ;
+  ren_tm Γ Δ _ ξ (κ²ₛ _ t) := κ²ₛ _ (ren_tm Γ Δ _ ξ t) ;
+  ren_tm Γ Δ _ ξ (δₛ t u v) :=
+    δₛ (ren_tm Γ Δ _ ξ t) (ren_tm Γ Δ _ ξ u) (ren_tm Γ Δ _ ξ v) ;
+  ren_tm Γ Δ _ ξ 0ₛ := 0ₛ ;
+  ren_tm Γ Δ _ ξ (Sₛ t) := Sₛ (ren_tm Γ Δ _ ξ t) ;
+  ren_tm Γ Δ _ ξ (recℕₛ t u v) :=
+    recℕₛ (ren_tm Γ Δ _ ξ t) (ren_tm Γ Δ _ ξ u) (ren_tm Γ Δ _ ξ v) ;
+  ren_tm Γ Δ _ ξ ⊤ₛ := ⊤ₛ ;
+  ren_tm Γ Δ _ ξ ⊥ₛ := ⊥ₛ ;
+  ren_tm Γ Δ _ ξ (rec𝔹ₛ t u v) :=
+    rec𝔹ₛ (ren_tm Γ Δ _ ξ t) (ren_tm Γ Δ _ ξ u) (ren_tm Γ Δ _ ξ v) ;
+  ren_tm Γ Δ _ ξ []ₛ := []ₛ ;
+  ren_tm Γ Δ _ ξ (t ::ₛ u) := (ren_tm Γ Δ _ ξ t) ::ₛ (ren_tm Γ Δ _ ξ u) ;
+  ren_tm Γ Δ _ ξ (rec𝕃ₛ t u v) :=
+    rec𝕃ₛ (ren_tm Γ Δ _ ξ t) (ren_tm Γ Δ _ ξ u) (ren_tm Γ Δ _ ξ v) ;
+  ren_tm Γ Δ _ ξ (φ ⇒ₛ ψ) := (ren_tm Γ Δ _ ξ φ) ⇒ₛ (ren_tm Γ Δ _ ξ ψ) ;
+  ren_tm Γ Δ _ ξ (∀ₛ s' φ) := ∀ₛ s' (ren_tm (s' :: Γ) (s' :: Δ) _ (ξ ↑ᵣ s') φ).
+
+Inductive HOL_vec : HOL_ctx -> HOL_ctx -> Type :=
+| vec_nil : forall Γ, HOL_vec Γ []
+| vec_cons : forall {Γ Δ : HOL_ctx} {s : st},
+    Γ ⊢ₛ s -> HOL_vec Γ Δ -> HOL_vec Γ (s :: Δ).
+
+Notation "Γ ⊢ᵥ Δ" := (HOL_vec Γ Δ) (at level 63).
+Notation εᵥ := vec_nil.
+Notation "t ::ᵥ v" := (vec_cons t v) (at level 60).
+
+Fixpoint ren_to_vec {Γ Δ : HOL_ctx} (ξ : Γ ⇝ Δ) : Γ ⊢ᵥ Δ :=
+  match ξ with
+  | εᵣ _ => εᵥ _
+  | v ::ᵣ vs => ⟦ v ⟧ₛ ::ᵥ (ren_to_vec vs)
+  end.
+
+Definition id_subst (Γ : HOL_ctx) : Γ ⊢ᵥ Γ := ren_to_vec (id_ren Γ).
+
+Equations lift_vec (Γ₀ Δ Γ₁ Δ' : HOL_ctx) (v : Γ₀ ++ Γ₁ ⊢ᵥ Δ') :
+  Γ₀ ++ Δ ++ Γ₁ ⊢ᵥ Δ' :=
+  lift_vec Γ₀ Δ Γ₁ []         (εᵥ _)    := εᵥ (Γ₀ ++ Δ ++ Γ₁) ;
+  lift_vec Γ₀ Δ Γ₁ (s' :: Δ') (t ::ᵥ v) :=
+    lift_tm Γ₀ Δ Γ₁ s' t ::ᵥ lift_vec Γ₀ Δ Γ₁ Δ' v.
+
+Definition lift1_vec {Γ Δ : HOL_ctx} (v : Γ ⊢ᵥ Δ) (s : st) : s :: Γ ⊢ᵥ Δ :=
+  lift_vec [] [s] Γ Δ v.
+
+Definition up_vec {Γ Δ : HOL_ctx} (t : Γ ⊢ᵥ Δ) (s : st) : s :: Γ ⊢ᵥ s :: Δ :=
+  ⟦ s >>₀ Γ ⟧ₛ ::ᵥ lift1_vec t s.
+
+Notation "v ↑ᵥ s" := (up_vec v s) (at level 55).
+
+Equations get_subst_var {Γ Δ : HOL_ctx} {s : st} (ve : Γ ⊢ᵥ Δ) (v : s ∈ˢ Δ) :
+  Γ ⊢ₛ s :=
+  get_subst_var (t ::ᵥ ve) (_ >>₀ _) := t ;
+  get_subst_var (t ::ᵥ ve) (_ >>ₛ v) := get_subst_var ve v.
+
+Equations subst_tm {Γ Δ : HOL_ctx} {s : st} (ve : Γ ⊢ᵥ Δ) (t : Δ ⊢ₛ s) :
+  Γ ⊢ₛ s :=
+  subst_tm ve ⟦ v ⟧ₛ := get_subst_var ve v ;
+  subst_tm ve (ƛₛ s' t) := ƛₛ s' (subst_tm (ve ↑ᵥ s') t) ;
+  subst_tm ve (t @ₛ u) := (subst_tm ve t) @ₛ (subst_tm ve u) ;
+  subst_tm ve ⟨⟩ₛ := ⟨⟩ₛ ;
+  subst_tm ve ⟨ t, u ⟩ₛ := ⟨ subst_tm ve t, subst_tm ve u ⟩ₛ ;
+  subst_tm ve (π¹ₛ t) := π¹ₛ (subst_tm ve t) ;
+  subst_tm ve (π²ₛ t) := π²ₛ (subst_tm ve t) ;
+  subst_tm ve (empty_tm _) := empty_tm _ ;
+  subst_tm ve (κ¹ₛ _ t) := κ¹ₛ _ (subst_tm ve t) ;
+  subst_tm ve (κ²ₛ _ t) := κ²ₛ _ (subst_tm ve t) ;
+  subst_tm ve (δₛ t u v) :=
+    δₛ (subst_tm ve t) (subst_tm ve u) (subst_tm ve v) ;
+  subst_tm ve 0ₛ := 0ₛ ;
+  subst_tm ve (Sₛ t) := Sₛ (subst_tm ve t) ;
+  subst_tm ve (recℕₛ t u v) :=
+    recℕₛ (subst_tm ve t) (subst_tm ve u) (subst_tm ve v) ;
+  subst_tm ve ⊤ₛ := ⊤ₛ ;
+  subst_tm ve ⊥ₛ := ⊥ₛ ;
+  subst_tm ve (rec𝔹ₛ t u v) :=
+    rec𝔹ₛ (subst_tm ve t) (subst_tm ve u) (subst_tm ve v) ;
+  subst_tm ve []ₛ := []ₛ ;
+  subst_tm ve (t ::ₛ u) := (subst_tm ve t) ::ₛ (subst_tm ve u) ;
+  subst_tm ve (rec𝕃ₛ t u v) :=
+    rec𝕃ₛ (subst_tm ve t) (subst_tm ve u) (subst_tm ve v) ;
+  subst_tm ve (φ ⇒ₛ ψ) := (subst_tm ve φ) ⇒ₛ (subst_tm ve ψ) ;
+  subst_tm ve (∀ₛ s' φ) := ∀ₛ s' (subst_tm (ve ↑ᵥ s') φ).
+
+Notation "t ⟨[ v ]⟩" := (subst_tm v t) (at level 60).
+
+Equations comp_vec {Γ₀ Γ₁ Γ₂ : HOL_ctx} (v : Γ₀ ⊢ᵥ Γ₁) (v' : Γ₁ ⊢ᵥ Γ₂) :
+  Γ₀ ⊢ᵥ Γ₂ :=
+  comp_vec v (εᵥ _) := εᵥ _ ;
+  comp_vec v (t ::ᵥ v') := t ⟨[ v ]⟩ ::ᵥ comp_vec v v'.
+
+Notation "v ∘ᵥ v'" := (comp_vec v' v) (at level 61).
+
+Lemma subst_id :
+  forall (Γ : HOL_ctx) (s : st) (t : Γ ⊢ₛ s),
+    t ⟨[id_subst Γ]⟩ = t.
+Proof.
+  intros. induction t.
+  - unfold id_subst.
+    autorewrite with subst_tm.
+    induction h.
+    + autorewrite with id_ren. simpl. autorewrite with get_subst_var.
+      reflexivity.
+    + autorewrite with id_ren. simpl. autorewrite with get_subst_var.
+Admitted.
+         
+Lemma id_comp_r :
+  forall (Γ Δ : HOL_ctx) (v : Γ ⊢ᵥ Δ), v ∘ᵥ id_subst Γ = v.
+Proof.
+  intros. induction v.
+  reflexivity.
+  autorewrite with comp_vec. rewrite IHv. f_equal. apply subst_id.
+Qed.
+
+Lemma id_comp_l :
+  forall (Γ Δ : HOL_ctx) (v : Γ ⊢ᵥ Δ), id_subst Δ ∘ᵥ v = v.
+Proof.
+  intros. induction v.
+  reflexivity.
+  autorewrite with comp_vec. unfold id_subst.
+  autorewrite with id_ren.
+Admitted.
+
+Lemma subst_up :
+  forall (Γ Δ : HOL_ctx) (s s' : st) (v : Γ ⊢ᵥ Δ) (t : Δ ⊢ₛ s),
+    (t ↑ₛ s') ⟨[ v ↑ᵥ s' ]⟩ = t ⟨[ v ]⟩ ↑ₛ s'.
+Admitted.
