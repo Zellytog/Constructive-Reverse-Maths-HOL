@@ -11,7 +11,7 @@ Require Import CRM.Prelude.ListCRM.
 
 Definition proof_ctx (n : nat) := list (tm n).
 
-Definition wt_ctx {n : nat} (Γ : HOL_ctx n) (Ξ : proof_ctx n) : Prop :=
+Definition wt_ctx {n : nat} (Γ : HOL_ctx n) (Ξ : proof_ctx n) : Type :=
   forall_l (fun Θ => Γ ⊢⟨ n ⟩ Θ ~: ℙₛ) Ξ.
 
 Inductive proving : forall (n : nat) (Γ : HOL_ctx n)
@@ -220,14 +220,10 @@ Proof.
     asimpl in IHproving.
     rewrite map_map in IHproving. asimpl in IHproving.
     rewrite map_map. asimpl.
-    rewrite (map_ext
-               (ren_tm shift >> ren_tm (var_zero .: ξ >> shift))
-               (ren_tm ξ >> ren_tm shift)) in IHproving.
     apply IHproving.
     intro f. unfold ">>". asimpl.
     case f eqn : e. simpl. asimpl. unfold ">>"; simpl.
     apply H. unfold ">>"; simpl. reflexivity.
-    asimpl. reflexivity.
   - simpl. asimpl.
     specialize (IHproving m Δ ξ H1).
     asimpl in IHproving.
@@ -321,9 +317,7 @@ Proof.
     assert (forall f,
                (ren_tm shift >> ren_tm (var_zero .: ξ >> shift)) f =
                  (ren_tm ξ >> ren_tm shift) f).
-    intro f; asimpl. reflexivity.
-    rewrite (map_ext _ _ H1) in IHproving.
-    apply IHproving.
+    intro f; asimpl. reflexivity. apply IHproving.
   - apply (pr_sort_app s).
     apply IHproving1; assumption.
     apply IHproving2; assumption.
@@ -475,7 +469,6 @@ Proof.
              ((S m)__tm var_zero .: v >> ren_tm shift)) f =
             (subst_tm v >> ren_tm shift) f).
     intro f; asimpl. reflexivity.
-    rewrite (map_ext _ _ H) in IHHφ.
     apply IHHφ.
   - asimpl. apply (pr_sort_app s).
     apply IHHφ1; assumption.

@@ -9,7 +9,7 @@ Import ListNotations.
 
 Reserved Notation "Γ ⊢⟨ n ⟩ t ~: s" (at level 87).
 
-Inductive HOL_typing : forall n : nat, (fin n -> st) -> tm n -> st -> Prop :=
+Inductive HOL_typing : forall n : nat, (fin n -> st) -> tm n -> st -> Type :=
 | typ_var : forall {n : nat} {Γ : fin n -> st} {v : fin n},
     Γ ⊢⟨ n ⟩ ⟦ v ⟧ₛ ~: Γ v
 | typ_lam : forall {n : nat} {Γ : fin n -> st} {t : tm (S n)} {s s' : st},
@@ -59,7 +59,7 @@ Definition HOL_ctx (n : nat) := fin n -> st.
 Definition HOL_vec (n m : nat) := fin n -> tm m.
 
 Definition wt_vec (n m : nat) (Γ : HOL_ctx m) (Δ : HOL_ctx n) (v : HOL_vec n m)
-  : Prop := forall f : fin n, Γ ⊢⟨ m ⟩ v f ~: Δ f.
+  : Type := forall f : fin n, Γ ⊢⟨ m ⟩ v f ~: Δ f.
 
 Notation "Γ ⊢⟨ m ⟩ v ~:⟨ n , Δ ⟩" := (wt_vec n m Γ Δ v) (at level 87).  
 
@@ -69,19 +69,19 @@ Theorem typ_ren :
     (forall f, (ξ >> Γ) f = Δ f) ->
     Δ ⊢⟨ m ⟩ t ~: s -> Γ ⊢⟨ n ⟩ ren_tm ξ t ~: s.
 Proof.
-  intros; revert n Γ ξ H. induction H0; intros; asimpl;
-    try (specialize (IHHOL_typing1 _ _ _ H); specialize (IHHOL_typing2 _ _ _ H));
-    try (specialize (IHHOL_typing3 _ _ _ H));
-    try (specialize (IHHOL_typing _ _ _ H)); try constructor;
-    try (apply IHHOL_typing1); try (apply IHHOL_typing2);
-    try (apply IHHOL_typing3); try (apply IHHOL_typing).
+  intros; revert n Γ ξ H. induction X; intros; asimpl;
+    try (specialize (IHX1 _ _ _ H); specialize (IHX2 _ _ _ H));
+    try (specialize (IHX3 _ _ _ H));
+    try (specialize (IHX _ _ _ H)); try constructor;
+    try (apply IHX1); try (apply IHX2);
+    try (apply IHX3); try (apply IHX).
   - unfold ">>" in H. specialize (H v). rewrite <- H. constructor.
   - intro f. case f. simpl. apply H. reflexivity.
-  - exact (typ_app s IHHOL_typing1 IHHOL_typing2).
-  - apply (typ_recL s'). apply IHHOL_typing1. apply IHHOL_typing2.
-    apply IHHOL_typing3.
-  - apply (typ_proj1 s'). apply IHHOL_typing.
-  - apply (typ_proj2 s). apply IHHOL_typing.
+  - exact (typ_app s IHX1 IHX2).
+  - apply (typ_recL s'). apply IHX1. apply IHX2.
+    apply IHX3.
+  - apply (typ_proj1 s'). apply IHX.
+  - apply (typ_proj2 s). apply IHX.
   - intro f. case f. simpl. apply H. reflexivity.
 Qed.
 
@@ -119,7 +119,7 @@ Theorem typ_weaken :
 Proof.
   intros. apply (typ_ren (S n) n shift (s' .: Γ) Γ t s).
   intro; unfold ">>"; reflexivity.
-  apply H.
+  apply X.
 Qed.
 
 Lemma typ_weaken_rev :
@@ -128,7 +128,7 @@ Lemma typ_weaken_rev :
 Proof.
   intros. apply (typ_ren_rev (S n) n shift (s' .: Γ) Γ t s).
   intro; unfold ">>"; reflexivity.
-  apply H.
+  apply X.
 Qed.
 
 Theorem typ_weaken_vec :
@@ -137,7 +137,7 @@ Theorem typ_weaken_vec :
 Proof.
   intros. induction n.
   intro f. inversion f.
-  intro f. unfold ">>"; simpl. apply typ_weaken. apply (H f).
+  intro f. unfold ">>"; simpl. apply typ_weaken. apply (X f).
 Qed.
 
 Theorem comp_typ_vec :
@@ -146,42 +146,47 @@ Theorem comp_typ_vec :
     Γ ⊢⟨ m ⟩ v ~:⟨ n , Δ ⟩ -> Δ ⊢⟨ n ⟩ t ~: s ->
     Γ ⊢⟨ m ⟩ t [ v ] ~: s.
 Proof.
-  intros; revert m v Γ H; induction H0; intros.
-  - asimpl. apply H.
+  intros. revert m v Γ X; induction X0; intros;
+    try (asimpl; try constructor; try (apply (typ_recL s')) ;
+         [apply IHX0_1 | apply IHX0_2 | apply IHX0_3]; apply X);
+    try(asimpl; constructor;
+        [apply IHX0_1 | apply IHX0_2]; apply X);
+    try (constructor; fail).
+  - asimpl. apply X.
   - asimpl. constructor.
-    apply IHHOL_typing.
+    apply IHX0.
     intro. case f eqn : e.
-    asimpl. apply typ_weaken_vec. apply H.
+    asimpl. apply typ_weaken_vec. apply X.
     asimpl.
     assert (s .: Γ0 ⊢⟨ S m ⟩ (S m)__tm var_zero ~: (s .: Γ0) var_zero) as H1.
     apply typ_var. apply H1.
-  - asimpl. apply (typ_app s). apply IHHOL_typing1. apply H.
-    apply IHHOL_typing2. apply H.
+  - asimpl. apply (typ_app s). apply IHX0_1. apply X.
+    apply IHX0_2. apply X.
+(*  - constructor.*)
+  - asimpl; apply typ_s. apply IHX0. apply X.
+(*  - asimpl; constructor;
+      [apply IHX0_1 | apply IHX0_2 | apply IHX0_3]; apply X.
   - constructor.
-  - asimpl; apply typ_s. apply IHHOL_typing. apply H.
+  - constructor.
   - asimpl; constructor;
-      [apply IHHOL_typing1 | apply IHHOL_typing2 | apply IHHOL_typing3]; apply H.
-  - constructor.
-  - constructor.
-  - asimpl; constructor;
-      [apply IHHOL_typing1 | apply IHHOL_typing2 | apply IHHOL_typing3]; apply H.
+      [apply IHX0_1 | apply IHHOL_typing2 | apply IHHOL_typing3]; apply H.
   - constructor.
   - asimpl; constructor;
       [apply IHHOL_typing1 | apply IHHOL_typing2]; apply H.
   - asimpl; apply (typ_recL s');
       [apply IHHOL_typing1 | apply IHHOL_typing2 | apply IHHOL_typing3]; apply H.
   - asimpl; constructor;
-      [apply IHHOL_typing1 | apply IHHOL_typing2]; apply H.
-  - asimpl; apply (typ_proj1 s'). apply IHHOL_typing. apply H.
-  - asimpl; apply (typ_proj2 s). apply IHHOL_typing. apply H.
-  - asimpl; constructor;
-      [apply IHHOL_typing1 | apply IHHOL_typing2]; apply H.
+      [apply IHHOL_typing1 | apply IHHOL_typing2]; apply H.*)
+  - asimpl; apply (typ_proj1 s'). apply IHX0. apply X.
+  - asimpl; apply (typ_proj2 s). apply IHX0. apply X.
+(*  - asimpl; constructor;
+      [apply IHHOL_typing1 | apply IHHOL_typing2]; apply H.*)
   - asimpl. apply (typ_forall s).
-    apply IHHOL_typing.
+    apply IHX0.
     intro. case f eqn : e.
-    asimpl. apply typ_weaken_vec. apply H.
+    asimpl. apply typ_weaken_vec. apply X.
     asimpl.
     assert (s .: Γ0 ⊢⟨ S m ⟩ (S m)__tm var_zero ~: (s .: Γ0) var_zero) as H1.
     apply typ_var. apply H1.
-  - asimpl. constructor. apply IHHOL_typing. apply H.
+  - asimpl. constructor. apply IHX0. apply X.
 Qed.
