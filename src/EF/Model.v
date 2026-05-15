@@ -1,7 +1,5 @@
 From CRM Require Import EF.Def.
-From CRM Require Import HOL.Base HOL.Typing HOL.Theorie HOL.Reduction.
-From CRM Require Import HOL.fintype.
-Import CombineNotations.
+From CRM Require Import HOL.Base.
 From Stdlib Require Import PeanoNat List Bool Equality.
 Import ListNotations.
 From Equations Require Import Equations.
@@ -16,8 +14,11 @@ Section Interp.
     | 𝔹ₛ => bool
     | 𝕃ₛ s' => list (sem s')
     | ℙₛ => Φ ℰ
+    | 𝟙ₛ => unit
+    | 𝟘ₛ => Empty_set
     | s' →ₛ s'' => (sem s') -> (sem s'')
     | s' ×ₛ s'' => (sem s') * (sem s'')
+    | s' +ₛ s'' => (sem s') + (sem s'')
     end.
 
   Fixpoint code (s : st) : sem s -> Φ ℰ :=
@@ -25,36 +26,13 @@ Section Interp.
     | ℕₛ => code_nat ℰ
     | 𝔹ₛ => code_bool ℰ
     | 𝕃ₛ s' => code_list ℰ (code s')
-    | ℙₛ => id
+    | ℙₛ => fun _ => p_top ℰ
+    | 𝟙ₛ => fun _ => p_top ℰ
+    | 𝟘ₛ => fun _ => p_bot ℰ
     | s →ₛ s' => code_fun ℰ (code s) (code s')
     | s ×ₛ s' => code_prod ℰ (code s) (code s')
+    | s +ₛ s' => fun _ => p_top ℰ
     end.
-
-  Axiom sem_tm : forall {n : nat} (Γ : HOL_ctx n) (t : tm n) (s : st),
-      Γ ⊢⟨ n ⟩ t ~: s -> (forall f, sem (Γ f)) -> sem s.
-
-  Definition eq_obs (s : st) (x y : sem s) : Prop.
-    induction s.
-    - exact (x = y).
-    - exact (x = y).
-    - revert y; induction x; intro y.
-      + induction y.
-        ++ exact True.
-        ++ exact False.
-      + induction y.
-        ++ exact False.
-        ++ exact ((IHs a a0) /\ IHx y).
-    - exact (log_eq ℰ x y).
-    - exact (forall z : sem s1, IHs2 (x z) (y z)).
-    - exact (IHs1 (fst x) (fst y) /\ IHs2 (snd x) (snd y)).
-  Qed.
-
-  Definition aux_app {n : nat} (Γ : HOL_ctx n) (s : st)
-    (v : forall f, sem (Γ f)) (x : sem s) : forall f, sem ((s .: Γ) f) :=
-    fun f => match f with
-             | None => x
-             | Some f' => v f'
-             end.
 
   Fixpoint sem_recN (A : Type) (x0 : A) (xs : nat -> A -> A) (n : nat) : A :=
     match n with
@@ -62,7 +40,7 @@ Section Interp.
     | S m => xs m (sem_recN A x0 xs m)
     end.
 
-  Fixpoint sem_recB (A : Type) (xt : A) (xf : A) (b : bool) : A :=
+  Definition sem_recB (A : Type) (xt : A) (xf : A) (b : bool) : A :=
     match b with
     | true => xt
     | false => xf
@@ -78,54 +56,82 @@ Section Interp.
   Derive NoConfusion for tm.
   Derive NoConfusion for st.
   
-  Equations sem_tm {n : nat} (Γ : HOL_ctx n) (t : tm n) (s : st) :
-    Γ ⊢⟨ n ⟩ t ~: s -> (forall f, sem (Γ f)) -> sem s :=
-  sem_tm Γ (var_tm f) _ typ_var v := v f ;
-  sem_tm Γ (ƛ t) (s →ₛ s') (typ_lam x) v :=
-      fun (z : sem s) => sem_tm (s .: Γ) t s' x (aux_app Γ s v z) ;
-  sem_tm Γ (t @ₛ u) s' (typ_app s xt xu) v :=
-      (sem_tm Γ t (s →ₛ s') xt v) (sem_tm Γ u s xu v) ;
-  sem_tm Γ Zₛ ℕₛ typ_z v := 0 ;
-  sem_tm Γ (Sₛ t) ℕₛ (typ_s x) v := S (sem_tm Γ t ℕₛ x v) ;
-  sem_tm Γ (recℕₛ t u v) s (typ_recN xt xu xv) w :=
-      sem_recN (sem s)
-        (sem_tm Γ t s xt w)
-        (sem_tm Γ u (ℕₛ →ₛ s →ₛ s) xu w)
-        (sem_tm Γ v ℕₛ xv w) ;
-  sem_tm Γ ttₛ 𝔹ₛ typ_tt v := true ;
-  sem_tm Γ ffₛ 𝔹ₛ typ_ff v := false ;
-  sem_tm Γ (rec𝔹ₛ t u v) s (typ_recB xt xu xv) w :=
-      sem_recB (sem s)
-        (sem_tm Γ t s xt w)
-        (sem_tm Γ u s xu w)
-        (sem_tm Γ v 𝔹ₛ xv w) ;
-  sem_tm Γ []ₛ (𝕃ₛ s) typ_nil v := [] ;
-  sem_tm Γ (t ::ₛ u) (𝕃ₛ s) (typ_cons xt xu) v :=
-      (sem_tm Γ t s xt v) :: (sem_tm Γ u (𝕃ₛ s) xu v) ;
-  sem_tm Γ (rec𝕃ₛ t u v) s (typ_recL s' xt xu xv) w :=
-      sem_recL (sem s') (sem s)
-        (sem_tm Γ t s xt w)
-        (sem_tm Γ u (s' →ₛ 𝕃ₛ s' →ₛ s →ₛ s) xu w)
-        (sem_tm Γ v (𝕃ₛ s') xv w) ;
-  sem_tm Γ ⟨ t , u ⟩ₛ (s ×ₛ s') (typ_pair xt xu) v :=
-      ((sem_tm Γ t s xt v), (sem_tm Γ u s' xu v)) ;
-  sem_tm Γ (π¹ₛ t) s (typ_proj1 s' xt) v :=
-      fst (sem_tm Γ t (s ×ₛ s') xt v) ;
-  sem_tm Γ (π²ₛ t) s' (typ_proj2 s xt) v :=
-      snd (sem_tm Γ t (s ×ₛ s') xt v) ;
-  sem_tm Γ (φ ⇒ₛ ψ) ℙₛ (typ_imp xφ xψ) v :=
-      p_imp ℰ (sem_tm Γ φ ℙₛ xφ v) (sem_tm Γ ψ ℙₛ xψ v) ;
-  sem_tm Γ (∀ₛ s φ) ℙₛ (typ_forall s xφ) v :=
-       push_in_powerset ℰ
-        (fun a =>
-           sem_tm (s .: Γ) φ ℙₛ xφ (aux_app Γ s v a));
-  sem_tm Γ (𝕊 s t) ℙₛ (typ_sort xt) v :=
-       code s (sem_tm Γ t s xt v).
+  Inductive vec_sem : HOL_ctx -> Type :=
+  | sem_nil : vec_sem []
+  | sem_cons : forall {Γ : HOL_ctx} {s : st},
+      sem s -> vec_sem Γ -> vec_sem (s :: Γ).
 
-  Equations sem_ctx {n : nat} (Γ : HOL_ctx n) (Ξ : proof_ctx n) :
-    (wt_ctx Γ Ξ) (forall f, sem (Γ f)) : list (Φ ℰ) :=
-  | sem_ctx Γ nil forall_nil H := nil ;
-  | sem_ctx Γ (φ :: Ξ) (forall_cons Hφ HΞ) H :=
-      sem_tm Γ φ ℙₛ Hφ H :: sem_ctx Γ Ξ HΞ H.
+  Equations fetch_ctx (Γ : HOL_ctx) (s : st) (v : s ∈ˢ Γ) (ve : vec_sem Γ) :
+    sem s :=
+    fetch_ctx (s :: Γ) s (s >>₀ Γ) (sem_cons x ve) := x ;
+    fetch_ctx (s :: Γ) s' (s >>ₛ v) (sem_cons _ ve) := fetch_ctx Γ s' v ve.
+
+  Print Empty_set. Search Empty_set.
+
+  Equations sem_tm (Γ : HOL_ctx) (s : st) (t : Γ ⊢ₛ s) (ve : vec_sem Γ) :
+    sem s :=
+  sem_tm Γ s ⟦ v ⟧ₛ ve := fetch_ctx Γ s v ve ;
+  sem_tm Γ _ (ƛₛ s t) ve :=
+    fun (z : sem s) => sem_tm (s :: Γ) s' t (sem_cons z ve) ;
+  sem_tm Γ s' (t @ₛ u) ve := (sem_tm Γ (_ →ₛ s') t ve) (sem_tm Γ _ u ve) ;
+  sem_tm Γ _ ⟨⟩ₛ ve := tt ;
+  sem_tm Γ _ ⟨ t , u ⟩ₛ ve := (sem_tm Γ _ t ve, sem_tm Γ _ u ve) ;
+  sem_tm Γ s (π¹ₛ t) ve := fst (sem_tm Γ (s ×ₛ _) t ve) ;
+  sem_tm Γ s' (π²ₛ t) ve := snd (sem_tm Γ (_ ×ₛ s') t ve) ;
+  sem_tm Γ _ (empty_tm s) ve := Empty_set_rect (fun _ => sem s);
+  sem_tm Γ _ (κ¹ₛ s' t) ve := inl (sem_tm Γ _ t ve) ;
+  sem_tm Γ _ (κ²ₛ s t) ve := inr (sem_tm Γ _ t ve) ;
+  sem_tm Γ s (δₛ t u v) ve :=
+    match sem_tm Γ _ t ve with
+    | inl x => sem_tm Γ _ u ve x | inr x => sem_tm Γ _ v ve x end ;
+  sem_tm Γ _ 0ₛ ve := 0 ;
+  sem_tm Γ _ (Sₛ t) ve := S (sem_tm Γ ℕₛ t ve) ;
+  sem_tm Γ s (recℕₛ t u v) ve :=
+      sem_recN (sem s) (sem_tm Γ s t ve) (sem_tm Γ (ℕₛ →ₛ s →ₛ s) u ve)
+        (sem_tm Γ ℕₛ v ve) ;
+  sem_tm Γ _ ⊤ₛ ve := true ;
+  sem_tm Γ _ ⊥ₛ ve := false ;
+  sem_tm Γ s (rec𝔹ₛ t u v) ve :=
+      sem_recB (sem s) (sem_tm Γ s t ve) (sem_tm Γ s u ve)
+        (sem_tm Γ 𝔹ₛ v ve) ;
+  sem_tm Γ _ []ₛ ve := [] ;
+  sem_tm Γ _ (t ::ₛ u) ve := (sem_tm Γ _ t ve) :: (sem_tm Γ (𝕃ₛ _) u ve) ;
+  sem_tm Γ s (rec𝕃ₛ t u v) ve :=
+      sem_recL (sem _) (sem s) (sem_tm Γ s t ve)
+        (sem_tm Γ (_ →ₛ 𝕃ₛ _ →ₛ s →ₛ s) u ve) (sem_tm Γ (𝕃ₛ _) v ve) ;
+  sem_tm Γ _ (φ ⇒ₛ ψ) ve := p_imp ℰ (sem_tm Γ ℙₛ φ ve) (sem_tm Γ ℙₛ ψ ve) ;
+  sem_tm Γ _ (∀ₛ s φ) ve :=
+    push_in_powerset ℰ (fun a => sem_tm (s :: Γ) ℙₛ φ (sem_cons a ve)).
+
+  Definition sem_cl {s : st} (t : nil ⊢ₛ s) : sem s := sem_tm nil s t sem_nil.
+
+  Notation "⟦ t ⟧ₛₑₘ" := (sem_cl t).
+  
+  Definition forcing (e : E ℰ) (Γ : HOL_ctx) (φ : Γ ⊢ₛ ℙₛ) (ve : vec_sem Γ) :
+    Prop :=
+    rel ℰ e (p_top ℰ) (sem_tm Γ ℙₛ φ ve).
+
+  Notation "e ⊩⟨ Γ , ve ⟩ φ" := (forcing e Γ φ ve) (at level 65).
+
+  Definition is_forced (Γ : HOL_ctx) (φ : Γ ⊢ₛ ℙₛ) (ve : vec_sem Γ) : Prop :=
+    exists e : E ℰ, e ⊩⟨ Γ, ve ⟩ φ.
+
+  Notation "⊩⟨ Γ , ve ⟩ φ" := (is_forced Γ φ ve) (at level 65).
+
+(*  Definition eq_obs (s : st) (x y : sem s) : Prop.
+    induction s.
+    - exact (x = y).
+    - exact (x = y).
+    - revert y; induction x; intro y.
+      + induction y.
+        ++ exact True.
+        ++ exact False.
+      + induction y.
+        ++ exact False.
+        ++ exact ((IHs a a0) /\ IHx y).
+    - exact (log_eq ℰ x y).
+    - exact (forall z : sem s1, IHs2 (x z) (y z)).
+    - exact (IHs1 (fst x) (fst y) /\ IHs2 (snd x) (snd y)).
+  Qed.*)
 
 End Interp.

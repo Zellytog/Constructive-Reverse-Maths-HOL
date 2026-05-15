@@ -311,3 +311,9 @@ Lemma subst_up :
   forall (Γ Δ : HOL_ctx) (s s' : st) (v : Γ ⊢ᵥ Δ) (t : Δ ⊢ₛ s),
     (t ↑ₛ s') ⟨[ v ↑ᵥ s' ]⟩ = t ⟨[ v ]⟩ ↑ₛ s'.
 Admitted.
+
+Lemma subst_subst :
+  forall (Γ Δ Θ : HOL_ctx) (s : st) (v : Γ ⊢ᵥ Δ) (v' : Δ ⊢ᵥ Θ) (t : Θ ⊢ₛ s),
+    t ⟨[ v' ]⟩ ⟨[ v ]⟩ = t ⟨[ v' ∘ᵥ v ]⟩.
+Proof.
+Admitted.

@@ -1,11 +1,7 @@
 -R src CRM
 src/Prelude/
-src/HOL/core.v
-src/HOL/fintype.v
 src/HOL/Base.v
-src/HOL/Typing.v
+src/HOL/Relations.v
 src/HOL/Reduction.v
 src/HOL/Theorie.v
-src/HOL/Logical.v
-src/HOL/Termes.v
 src/EF/Def.v

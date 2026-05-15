@@ -1,4 +1,4 @@
-Require Import Base.
+From CRM Require Import Base Reduction.
 From Stdlib Require Import List.
 Import ListNotations.
 From Stdlib Require Import Program.Equality.
@@ -62,9 +62,26 @@ Equations Standardity (Γ : HOL_ctx) (s : st) : Γ ⊢ₛ s →ₛ ℙₛ :=
              (∀ₛ t (Standardity _ t @ₛ ⟦ vz ⟧ₛ ⇒ₛ ⟦ vs vz ⟧ₛ @ₛ κ²ₛ _ ⟦ vz ⟧ₛ)) ⇒ₛ
              ⟦ vz ⟧ₛ @ₛ ⟦ vs vz ⟧ₛ)).
 
+Lemma stand_lift : forall (Γ₀ Δ Γ₁ : HOL_ctx) (s : st),
+    lift_tm Γ₀ Δ Γ₁ (s →ₛ ℙₛ) (Standardity (Γ₀ ++ Γ₁) s) =
+      Standardity (Γ₀ ++ Δ ++ Γ₁) s.
+Proof.
+  intros. revert Γ₀ Δ Γ₁; induction s; intros Γ₀ Δ Γ₁;
+    autorewrite with Standardity lift_tm lift_var;
+    try (rewrite IHs); try (rewrite IHs1; rewrite IHs2); reflexivity.
+Qed.
+
+Lemma stand_subst : forall (Γ Δ : HOL_ctx) (v : Γ ⊢ᵥ Δ) (s : st),
+    Standardity Δ s ⟨[ v ]⟩ = Standardity Γ s.
+Proof.
+  intros. induction s; autorewrite with Standardity subst_tm.
+Admitted.
+
 Inductive proof : forall (Γ : HOL_ctx), proof_ctx Γ -> Γ ⊢ₛ ℙₛ -> Prop :=
 | pr_ax : forall {Γ : HOL_ctx} {Ξ : proof_ctx Γ} {φ : Γ ⊢ₛ ℙₛ},
     In φ Ξ -> proof Γ Ξ φ
+| pr_red : forall {Γ : HOL_ctx} {Ξ : proof_ctx Γ} (φ : Γ ⊢ₛ ℙₛ) {ψ : Γ ⊢ₛ ℙₛ},
+    φ =ₛ ψ -> proof Γ Ξ φ -> proof Γ Ξ ψ
 | pr_imp_i : forall {Γ : HOL_ctx} {Ξ : proof_ctx Γ} {φ ψ : Γ ⊢ₛ ℙₛ},
     proof Γ (φ :: Ξ) ψ -> proof Γ Ξ (φ ⇒ₛ ψ)
 | pr_imp_e : forall {Γ : HOL_ctx} {Ξ : proof_ctx Γ} (φ : Γ ⊢ₛ ℙₛ) {ψ : Γ ⊢ₛ ℙₛ},
@@ -80,12 +97,13 @@ Inductive proof : forall (Γ : HOL_ctx), proof_ctx Γ -> Γ ⊢ₛ ℙₛ -> Pro
 
 Notation "Γ ∣ Ξ ⊢ᴴᴼᴸ φ" := (proof Γ Ξ φ) (at level 65).
 
-Lemma lift_proof :
+Lemma pr_lift :
   forall (Γ₀ Δ Γ₁ : HOL_ctx) (Ξ : proof_ctx (Γ₀ ++ Γ₁)) (φ : Γ₀ ++ Γ₁ ⊢ₛ ℙₛ),
     Γ₀ ++ Γ₁ ∣ Ξ ⊢ᴴᴼᴸ φ ->
     Γ₀ ++ Δ ++ Γ₁ ∣ map (lift_tm Γ₀ Δ Γ₁ ℙₛ) Ξ ⊢ᴴᴼᴸ lift_tm Γ₀ Δ Γ₁ ℙₛ φ.
 Proof.
   intros. dependent induction H.
+  - admit.
   - admit.
   - autorewrite with lift_tm.
     apply pr_imp_i.
@@ -108,3 +126,59 @@ Proof.
   - admit.
 Admitted.
 
+Lemma pr_up :
+  forall (Γ : HOL_ctx) (s : st) (Ξ : proof_ctx Γ) (φ : Γ ⊢ₛ ℙₛ),
+    Γ ∣ Ξ ⊢ᴴᴼᴸ φ -> s :: Γ ∣ map (fun x => x ↑ₛ s) Ξ ⊢ᴴᴼᴸ φ ↑ₛ s.
+Proof.
+  intros. apply (pr_lift [] [s] Γ _ _ H).
+Qed.
+
+Lemma pr_subst :
+  forall (Γ Δ : HOL_ctx) (Ξ : proof_ctx Δ) (φ : Δ ⊢ₛ ℙₛ) (v : Γ ⊢ᵥ Δ),
+    Δ ∣ Ξ ⊢ᴴᴼᴸ φ -> Γ ∣ map (subst_tm v) Ξ ⊢ᴴᴼᴸ φ ⟨[ v ]⟩.
+Proof.
+  intros; revert Γ v. dependent induction H; intros.
+  - admit.
+  - admit.
+  - autorewrite with subst_tm. apply pr_imp_i. apply IHproof.
+  - apply (pr_imp_e (φ ⟨[ v ]⟩)).
+    apply IHproof1. apply IHproof2.
+  - autorewrite with subst_tm.
+    specialize (IHproof (s :: Γ0) (v ↑ᵥ s)).
+    apply pr_fora_i.
+    rewrite map_map.
+    rewrite map_map in IHproof.
+    erewrite map_ext in IHproof. apply IHproof.
+    intro x. rewrite subst_up. reflexivity.
+  - rewrite subst_subst. autorewrite with comp_vec.
+    rewrite id_comp_l.
+    specialize (IHproof Γ0 v).
+    admit.
+  - autorewrite with subst_tm. rewrite stand_subst.
+    specialize (@pr_stand Γ0 s (map (subst_tm v) Ξ)) as H.
+    apply H.
+Admitted.
+
+Lemma pr_weaken :
+  forall {Γ : HOL_ctx} (Ξ Ξ' : proof_ctx Γ) {φ : Γ ⊢ₛ ℙₛ},
+    incl Ξ Ξ' ->
+    Γ ∣ Ξ ⊢ᴴᴼᴸ φ -> Γ ∣ Ξ' ⊢ᴴᴼᴸ φ.
+Proof.
+  intros. revert Ξ' H; dependent induction H0; intros.
+  - apply pr_ax. apply H0. apply H.
+  - apply (pr_red φ). assumption. apply IHproof; assumption.
+  - apply pr_imp_i. apply IHproof.
+    unfold incl. intros χ [χφ | χΞ].
+    rewrite χφ. left; reflexivity.
+    right. apply H. apply χΞ.
+  - apply (pr_imp_e φ). apply IHproof1. apply H. apply IHproof2; apply H.
+  - apply pr_fora_i. apply IHproof.
+    apply incl_map. apply H.
+  - apply (pr_fora_e t). apply IHproof. apply H.
+  - apply pr_stand.
+Qed.
+
+Corollary pr_weaken_1 :
+  forall {Γ : HOL_ctx} {Ξ : proof_ctx Γ} {φ : Γ ⊢ₛ ℙₛ},
+    Γ ∣ Ξ ⊢ᴴᴼᴸ φ -> forall ψ : Γ ⊢ₛ ℙₛ, Γ ∣ ψ :: Ξ ⊢ᴴᴼᴸ φ.
+Proof. intros. exact (pr_weaken Ξ (ψ :: Ξ) (incl_tl ψ (incl_refl Ξ)) H). Qed.

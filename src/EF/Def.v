@@ -1,4 +1,4 @@
-Require Import PeanoNat List.
+From Stdlib Require Import PeanoNat List.
 
 Record EFData : Type :=
   { E : Type
