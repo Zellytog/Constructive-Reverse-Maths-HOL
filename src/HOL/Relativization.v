@@ -153,6 +153,8 @@ Lemma relat_subst :
   forall (P : relat_pred) {Γ Δ: HOL_ctx} {s : st} {v : Γ ⊢ᵥ Δ} {t : Δ ⊢ₛ s},
     relat_tm P (t ⟨[ v ]⟩) = relat_tm P t ⟨[ v ]⟩.
 Proof.
+  intros. induction t.
+  - autorewrite with subst_tm relat_tm.
 Admitted.
 
 Lemma stand_relat :

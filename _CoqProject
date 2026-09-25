@@ -1,7 +1,7 @@
 -R src CRM
 src/Prelude/
 src/HOL/Base.v
+src/HOL/Closed.v
 src/HOL/Relations.v
 src/HOL/Reduction.v
-src/HOL/Theorie.v
 src/EF/Def.v

@@ -1,5 +1,5 @@
 From CRM Require Import EF.Def.
-From CRM Require Import HOL.Base.
+From CRM Require Import HOL.Base HOL.Reduction.
 From Stdlib Require Import PeanoNat List Bool Equality.
 Import ListNotations.
 From Equations Require Import Equations.
@@ -66,8 +66,6 @@ Section Interp.
     fetch_ctx (s :: Γ) s (s >>₀ Γ) (sem_cons x ve) := x ;
     fetch_ctx (s :: Γ) s' (s >>ₛ v) (sem_cons _ ve) := fetch_ctx Γ s' v ve.
 
-  Print Empty_set. Search Empty_set.
-
   Equations sem_tm (Γ : HOL_ctx) (s : st) (t : Γ ⊢ₛ s) (ve : vec_sem Γ) :
     sem s :=
   sem_tm Γ s ⟦ v ⟧ₛ ve := fetch_ctx Γ s v ve ;
@@ -118,20 +116,88 @@ Section Interp.
 
   Notation "⊩⟨ Γ , ve ⟩ φ" := (is_forced Γ φ ve) (at level 65).
 
-(*  Definition eq_obs (s : st) (x y : sem s) : Prop.
-    induction s.
-    - exact (x = y).
-    - exact (x = y).
-    - revert y; induction x; intro y.
-      + induction y.
-        ++ exact True.
-        ++ exact False.
-      + induction y.
-        ++ exact False.
-        ++ exact ((IHs a a0) /\ IHx y).
-    - exact (log_eq ℰ x y).
-    - exact (forall z : sem s1, IHs2 (x z) (y z)).
-    - exact (IHs1 (fst x) (fst y) /\ IHs2 (snd x) (snd y)).
-  Qed.*)
+  Fixpoint eq_nat_obs (n m : nat) : Prop :=
+    match n,m with
+    | 0, 0 => True
+    | S n', S m' => eq_nat_obs n' m'
+    | _, _ => False
+    end.
+
+  Fixpoint eq_list_obs {s : st} (P : sem s -> sem s -> Prop)
+    (l l' : list (sem s)) : Prop :=
+    match l,l' with
+    | [], [] => True
+    | x :: xs, y :: ys => P x y /\ eq_list_obs P xs ys
+    | _, _ => False
+    end.
+  
+  Equations eq_obs (s : st) (x y : sem s) : Prop by struct s :=
+    eq_obs ℕₛ n m := eq_nat_obs n m ;
+    eq_obs 𝔹ₛ true true := True ;
+    eq_obs 𝔹ₛ true false := False ;
+    eq_obs 𝔹ₛ false true := False ;
+    eq_obs 𝔹ₛ false false := True ;
+    eq_obs (𝕃ₛ s) l l' := eq_list_obs (eq_obs s) l l' ;
+    eq_obs ℙₛ φ ψ := log_eq ℰ φ ψ ;
+    eq_obs 𝟙ₛ tt tt := True ;
+    eq_obs 𝟘ₛ x y := x = y ;
+    eq_obs (s →ₛ s') f g :=
+      forall x y : sem s, eq_obs s x y -> eq_obs s' (f x) (g y) ;
+    eq_obs (s ×ₛ s') (x1, x2) (y1, y2) := eq_obs s x1 y1 /\ eq_obs s' x2 y2 ;
+    eq_obs (s +ₛ s') (inl x) (inl y) := eq_obs s x y ;
+    eq_obs (s +ₛ s') (inl x) (inr y) := False ;
+    eq_obs (s +ₛ s') (inr x) (inl y) := False ;
+    eq_obs (s +ₛ s') (inr x) (inr y) := eq_obs s' x y.
+(*
+      Lemma subst_sem :
+        forall (Γ Δ : HOL_ctx) (s s' : st) (v : Γ ⊢ₛ Δ) (t : Δ ⊢ₛ s) (ρ : vec_sem Δ),
+          sem_tm Δ s (t ⟨[ v ]⟩) = sem_tm Γ *)
+
+  Lemma refl_obs : forall (s : st) (x : sem s), eq_obs s x x.
+  Proof.
+    intros. induction s; autorewrite with eq_obs. induction x.
+    simpl. trivial. simpl. apply IHx. case x; autorewrite with eq_obs; trivial.
+    induction x; simpl. trivial. split. apply IHs. apply IHx.
+    split. exists (e_id ℰ). apply e_is_id. exists (e_id ℰ). apply e_is_id.
+    case x. autorewrite with eq_obs. trivial. reflexivity.
+    intros. admit. (*apply IHs2.*) destruct x. autorewrite with eq_obs.
+    split. apply IHs1. apply IHs2.
+    case x; intro; autorewrite with eq_obs. apply IHs1. apply IHs2.
+  Admitted.
+
+  Lemma obs_red_immed :
+    forall (Γ : HOL_ctx) (s : st) (t u : Γ ⊢ₛ s) (ρ : vec_sem Γ),
+      b_red_immed _ _ t u -> eq_obs s (sem_tm Γ s t ρ) (sem_tm Γ s u ρ).
+  Proof.
+    intros. induction H; autorewrite with sem_tm; try apply refl_obs.
+    - admit.
+  Admitted.
+
+  Lemma obs_red :
+    forall (Γ : HOL_ctx) (s : st) (t u : Γ ⊢ₛ s) (ρ : vec_sem Γ),
+      t ▷ₛ u -> eq_obs s (sem_tm Γ s t ρ) (sem_tm Γ s u ρ).
+  Proof.
+    intros. induction H.
+    - apply obs_red_immed. apply H.
+    - autorewrite with eq_obs. intro. admit.
+    - specialize (IHto_compat ρ). autorewrite with eq_obs in IHto_compat.
+      specialize (IHto_compat (sem_tm Γ s v ρ) (sem_tm Γ s v ρ) (refl_obs _ _)).
+      apply IHto_compat.
+    - specialize (IHto_compat ρ).
+      specialize (refl_obs (s →ₛ s') (sem_tm Γ _ t ρ)) as H0.
+      autorewrite with eq_obs in H0.
+      specialize (H0 (sem_tm Γ s u ρ) (sem_tm Γ s v ρ) IHto_compat).
+      apply H0.
+    - autorewrite with sem_tm eq_obs.
+      split; [apply IHto_compat | apply refl_obs].
+    - autorewrite with sem_tm eq_obs.
+      split; [apply refl_obs | apply IHto_compat].
+    - autorewrite with sem_tm. admit.
+    - autorewrite with sem_tm. admit.
+    - autorewrite with sem_tm eq_obs. apply IHto_compat.
+    - autorewrite with sem_tm eq_obs. apply IHto_compat.
+    - admit.
+    - admit.
+  Admitted.
 
 End Interp.

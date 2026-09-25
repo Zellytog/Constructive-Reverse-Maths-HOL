@@ -401,9 +401,9 @@ Definition b_red := to_compat b_red_immed.
 Definition b_red_rt := rt_clot b_red.
 Definition b_eq := rst_clot b_red.
 
-Notation "t ▷ₛ u" := (b_red _ _ t u) (at level 60).
-Notation "t ▷*ₛ u" := (b_red_rt _ _ t u) (at level 60).
-Notation "t =ₛ u" := (b_eq _ _ t u) (at level 60).
+Notation "t ▷ₛ u" := (b_red _ _ t u) (at level 62).
+Notation "t ▷*ₛ u" := (b_red_rt _ _ t u) (at level 62).
+Notation "t =ₛ u" := (b_eq _ _ t u) (at level 62).
 
 Proposition compat_red : compat_rel b_red_rt.
 Proof. apply rt_clot_compat. apply to_compat_compat. Qed.
@@ -412,4 +412,74 @@ Proposition compat_beq : compat_rel b_eq.
 Proof.
   apply (prop_to_rst compat_rel ext_compat s_clot_compat rt_clot_compat).
   apply to_compat_compat.
+Qed.
+
+Lemma lift_red :
+  forall (Γ₀ Δ Γ₁ : HOL_ctx) (s : st) (t u : Γ₀ ++ Γ₁ ⊢ₛ s),
+    t ▷ₛ u -> lift_tm Γ₀ Δ Γ₁ s t ▷ₛ lift_tm Γ₀ Δ Γ₁ s u.
+Proof.
+  intros.
+Admitted.
+
+Lemma up_red :
+  forall {Γ : HOL_ctx} {s : st} (t u : Γ ⊢ₛ s) (s' : st),
+    t ▷ₛ u -> up_tm t s' ▷ₛ up_tm u s'.
+Proof. intros. apply (lift_red [] [s'] Γ). apply H. Qed.
+
+Lemma subst_red :
+  forall (Γ Δ : HOL_ctx) (s : st) (t u : Δ ⊢ₛ s) (v : Γ ⊢ᵥ Δ),
+    t ▷ₛ u -> t ⟨[ v ]⟩ ▷ₛ u ⟨[ v ]⟩.
+Proof.
+  intros.
+Admitted.
+
+Lemma lift_red_rt :
+  forall (Γ₀ Δ Γ₁ : HOL_ctx) (s : st) (t u : Γ₀ ++ Γ₁ ⊢ₛ s),
+    t ▷*ₛ u -> lift_tm Γ₀ Δ Γ₁ s t ▷*ₛ lift_tm Γ₀ Δ Γ₁ s u.
+Proof.
+  intros. dependent induction H. apply rt_refl.
+  apply (rt_step b_red (lift_tm Γ₀ Δ Γ₁ s u0)).
+  apply IHrt_clot; try reflexivity.
+  apply lift_red. apply H0.
+Qed.
+
+Lemma up_red_rt :
+  forall {Γ : HOL_ctx} {s : st} (t u : Γ ⊢ₛ s) (s' : st),
+    t ▷*ₛ u -> up_tm t s' ▷*ₛ up_tm u s'.
+Proof. intros. apply (lift_red_rt [] [s'] Γ). apply H. Qed.
+
+Lemma subst_red_rt :
+  forall (Γ Δ : HOL_ctx) (s : st) (t u : Δ ⊢ₛ s) (v : Γ ⊢ᵥ Δ),
+    t ▷*ₛ u -> t ⟨[ v ]⟩ ▷*ₛ u ⟨[ v ]⟩.
+Proof.
+  intros. induction H. apply rt_refl.
+  apply (rt_step _ (u ⟨[ v ]⟩)). apply IHrt_clot.
+  apply subst_red. apply H0.
+Qed.
+
+Lemma lift_b_eq :
+  forall (Γ₀ Δ Γ₁ : HOL_ctx) (s : st) (t u : Γ₀ ++ Γ₁ ⊢ₛ s),
+    t =ₛ u -> lift_tm Γ₀ Δ Γ₁ s t =ₛ lift_tm Γ₀ Δ Γ₁ s u.
+Proof.
+  intros. dependent induction H. apply rst_refl.
+  apply (rst_step _ (lift_tm Γ₀ Δ Γ₁ s u0)).
+  apply IHrst_clot; try reflexivity.
+  apply lift_red. apply H0.
+  apply (rst_unstep _ (lift_tm Γ₀ Δ Γ₁ s u0)).
+  apply IHrst_clot; try reflexivity.
+  apply lift_red. apply H0.
+Qed.
+
+Lemma up_b_eq :
+  forall {Γ : HOL_ctx} {s : st} (t u : Γ ⊢ₛ s) (s' : st),
+    t =ₛ u -> up_tm t s' =ₛ up_tm u s'.
+Proof. intros. apply (lift_b_eq [] [s'] Γ). apply H. Qed.
+
+Lemma subst_b_eq :
+  forall (Γ Δ : HOL_ctx) (s : st) (t u : Δ ⊢ₛ s) (v : Γ ⊢ᵥ Δ),
+    t =ₛ u -> t ⟨[ v ]⟩ =ₛ u ⟨[ v ]⟩.
+Proof.
+  intros. induction H. constructor.
+  apply (rst_step _ (u ⟨[ v ]⟩)). apply IHrst_clot. apply subst_red. apply H0.
+  apply (rst_unstep _ (u ⟨[ v ]⟩)). apply IHrst_clot. apply subst_red. apply H0.
 Qed.

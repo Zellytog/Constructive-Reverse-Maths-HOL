@@ -25,7 +25,7 @@ Notation "𝟙ₛ" := unit_st.
 Notation "𝟘ₛ" := empty_st.
 Notation "s →ₛ s'" := (fun_st s s') (at level 60, right associativity).
 Notation "s ×ₛ s'" := (prod_st s s') (at level 53, right associativity).
-Notation "s +ₛ s'" := (coprod_st s s') (at level 55, right associativity).
+Notation "s +ₛ s'" := (coprod_st s s') (at level 56, right associativity).
 
 Definition HOL_ctx : Type := list st.
 
@@ -35,8 +35,8 @@ Inductive HOL_var : st -> HOL_ctx -> Type :=
     HOL_var s Γ -> HOL_var s (s' :: Γ).
 
 Notation "s ∈ˢ Γ" := (HOL_var s Γ) (at level 65).
-Notation "s >>₀ Γ" := (vz_tm s Γ) (at level 55).
-Notation "s >>ₛ v" := (vs_tm s v) (at level 55, right associativity).
+Notation "s >>₀ Γ" := (vz_tm s Γ) (at level 54).
+Notation "s >>ₛ v" := (vs_tm s v) (at level 54, right associativity).
 
 Inductive tm : HOL_ctx -> st -> Type :=
 | var_tm : forall {Γ : HOL_ctx} {s : st}, s ∈ˢ Γ -> tm Γ s
@@ -90,7 +90,7 @@ Notation "⊤ₛ" := tt_tm.
 Notation "⊥ₛ" := ff_tm.
 Notation rec𝔹ₛ := recB_tm.
 Notation "[]ₛ" := nil_tm.
-Notation "t ::ₛ u" := (cons_tm t u) (at level 55, right associativity).
+Notation "t ::ₛ u" := (cons_tm t u) (at level 54, right associativity).
 Notation rec𝕃ₛ := recL_tm.
 Notation "φ ⇒ₛ ψ" := (imp_tm φ ψ) (at level 61, right associativity).
 Notation "∀ₛ" := forall_tm.
@@ -162,8 +162,8 @@ Definition up_ren {Γ Δ : HOL_ctx} (ξ : Γ ⇝ Δ) (s : st) : (s :: Γ ⇝ s :
 Definition up_tm {Γ : HOL_ctx} {s : st} (t : Γ ⊢ₛ s) (s' : st) : s' :: Γ ⊢ₛ s :=
   lift_tm [] [s'] Γ s t.
 
-Notation "t ↑ₛ s" := (up_tm t s) (at level 55).
-Notation "ξ ↑ᵣ s" := (up_ren ξ s) (at level 55).
+Notation "t ↑ₛ s" := (up_tm t s) (at level 55, left associativity).
+Notation "ξ ↑ᵣ s" := (up_ren ξ s) (at level 55, left associativity).
 
 Equations id_ren (Γ : HOL_ctx) : Γ ⇝ Γ :=
   id_ren [] := ren_nil [] ;

@@ -1,4 +1,4 @@
-From CRM Require Import Base Reduction.
+From CRM Require Import Base Reduction Closed.
 From Stdlib Require Import List.
 Import ListNotations.
 From Stdlib Require Import Program.Equality.
@@ -22,47 +22,49 @@ Definition proof_ctx (Γ : HOL_ctx) : Type := list (Γ ⊢ₛ ℙₛ).
 Notation vz := (vz_tm _ _).
 Notation vs := (vs_tm _).
 
-Equations Standardity (Γ : HOL_ctx) (s : st) : Γ ⊢ₛ s →ₛ ℙₛ :=
-  Standardity Γ ℕₛ :=
+Equations Standardity (s : st) : ⟨⟩⊢ₛ s →ₛ ℙₛ :=
+  Standardity ℕₛ :=
     ƛₛ ℕₛ
       (∀ₛ (ℕₛ →ₛ ℙₛ)
         ((⟦ vz ⟧ₛ @ₛ 0ₛ) ⇒ₛ
            (∀ₛ ℕₛ (⟦ vs vz ⟧ₛ @ₛ ⟦ vz ⟧ₛ ⇒ₛ ⟦ vs vz ⟧ₛ @ₛ Sₛ ⟦ vz ⟧ₛ)) ⇒ₛ
            ⟦ vz ⟧ₛ @ₛ ⟦ vs vz ⟧ₛ)) ;
-  Standardity Γ 𝔹ₛ :=
+  Standardity 𝔹ₛ :=
     ƛₛ 𝔹ₛ
       (∀ₛ (𝔹ₛ →ₛ ℙₛ)
         ((⟦ vz ⟧ₛ @ₛ ⊤ₛ) ⇒ₛ (⟦ vz ⟧ₛ @ₛ ⊥ₛ) ⇒ₛ (⟦ vz ⟧ₛ @ₛ ⟦ vs vz ⟧ₛ))) ;
-  Standardity Γ (𝕃ₛ s) :=
+  Standardity (𝕃ₛ s) :=
     ƛₛ (𝕃ₛ s)
       (∀ₛ (𝕃ₛ s →ₛ ℙₛ)
         ((⟦ vz ⟧ₛ @ₛ []ₛ) ⇒ₛ
-           (∀ₛ s ((Standardity _ s) @ₛ ⟦ vz ⟧ₛ ⇒ₛ
+           (∀ₛ s (((Standardity s) ↑ₛ _ ↑ₛ _ ↑ₛ _) @ₛ ⟦ vz ⟧ₛ ⇒ₛ
                     (∀ₛ (𝕃ₛ s)
                       (⟦ vs (vs vz) ⟧ₛ @ₛ ⟦ vz ⟧ₛ ⇒ₛ
                          ⟦ vs (vs vz) ⟧ₛ @ₛ (⟦ vs vz ⟧ₛ ::ₛ ⟦ vz ⟧ₛ))))) ⇒ₛ
            ⟦ vz ⟧ₛ @ₛ ⟦ vs vz ⟧ₛ)) ;
-  Standardity Γ ℙₛ := ƛₛ ℙₛ (∀ₛ ℙₛ (⟦ vz ⟧ₛ ⇒ₛ ⟦ vz ⟧ₛ)) ;
-  Standardity Γ 𝟙ₛ := ƛₛ 𝟙ₛ (∀ₛ (𝟙ₛ →ₛ ℙₛ) (⟦ vz ⟧ₛ @ₛ ⟨⟩ₛ ⇒ₛ ⟦ vz ⟧ₛ @ₛ ⟦ vs vz ⟧ₛ)) ;
-  Standardity Γ 𝟘ₛ := ƛₛ 𝟘ₛ (∀ₛ (𝟘ₛ →ₛ ℙₛ) (⟦ vz ⟧ₛ @ₛ ⟦ vs vz ⟧ₛ)) ;
-  Standardity Γ (s →ₛ t) :=
-    ƛₛ (s →ₛ t) (∀ₛ s (Standardity _ s @ₛ ⟦ vz ⟧ₛ ⇒ₛ
-                        Standardity _ t @ₛ (⟦ vs vz ⟧ₛ @ₛ ⟦ vz ⟧ₛ))) ;
-  Standardity Γ (s ×ₛ t) :=
+  Standardity ℙₛ := ƛₛ ℙₛ (∀ₛ ℙₛ (⟦ vz ⟧ₛ ⇒ₛ ⟦ vz ⟧ₛ)) ;
+  Standardity 𝟙ₛ := ƛₛ 𝟙ₛ (∀ₛ (𝟙ₛ →ₛ ℙₛ) (⟦ vz ⟧ₛ @ₛ ⟨⟩ₛ ⇒ₛ ⟦ vz ⟧ₛ @ₛ ⟦ vs vz ⟧ₛ)) ;
+  Standardity 𝟘ₛ := ƛₛ 𝟘ₛ (∀ₛ (𝟘ₛ →ₛ ℙₛ) (⟦ vz ⟧ₛ @ₛ ⟦ vs vz ⟧ₛ)) ;
+  Standardity (s →ₛ t) :=
+    ƛₛ (s →ₛ t) (∀ₛ s ((Standardity s ↑ₛ _ ↑ₛ _) @ₛ ⟦ vz ⟧ₛ ⇒ₛ
+                        (Standardity t ↑ₛ _ ↑ₛ _) @ₛ (⟦ vs vz ⟧ₛ @ₛ ⟦ vz ⟧ₛ))) ;
+  Standardity (s ×ₛ t) :=
     ƛₛ (s ×ₛ t)
       (∀ₛ (s ×ₛ t →ₛ ℙₛ) (
-           (∀ₛ s (Standardity _ s @ₛ ⟦ vz ⟧ₛ ⇒ₛ
-                  (∀ₛ t (Standardity _ t @ₛ ⟦ vz ⟧ₛ ⇒ₛ
+           (∀ₛ s ((Standardity s ↑ₛ _ ↑ₛ _ ↑ₛ _) @ₛ ⟦ vz ⟧ₛ ⇒ₛ
+                  (∀ₛ t ((Standardity t ↑ₛ _ ↑ₛ _ ↑ₛ _ ↑ₛ _) @ₛ ⟦ vz ⟧ₛ ⇒ₛ
                           (⟦ vs (vs vz) ⟧ₛ @ₛ ⟨ ⟦ vs vz ⟧ₛ, ⟦ vz ⟧ₛ ⟩ₛ))))) ⇒ₛ
              ⟦ vz ⟧ₛ @ₛ ⟦ vs vz ⟧ₛ)) ;
-  Standardity Γ (s +ₛ t) :=
+  Standardity (s +ₛ t) :=
     ƛₛ (s +ₛ t)
       (∀ₛ (s +ₛ t →ₛ ℙₛ) (
-           (∀ₛ s (Standardity _ s @ₛ ⟦ vz ⟧ₛ ⇒ₛ ⟦ vs vz ⟧ₛ @ₛ κ¹ₛ _ ⟦ vz ⟧ₛ)) ⇒ₛ
-             (∀ₛ t (Standardity _ t @ₛ ⟦ vz ⟧ₛ ⇒ₛ ⟦ vs vz ⟧ₛ @ₛ κ²ₛ _ ⟦ vz ⟧ₛ)) ⇒ₛ
-             ⟦ vz ⟧ₛ @ₛ ⟦ vs vz ⟧ₛ)).
+          (∀ₛ s ((Standardity s ↑ₛ _ ↑ₛ _ ↑ₛ _) @ₛ
+                   ⟦ vz ⟧ₛ ⇒ₛ ⟦ vs vz ⟧ₛ @ₛ κ¹ₛ _ ⟦ vz ⟧ₛ)) ⇒ₛ
+            (∀ₛ t ((Standardity t ↑ₛ _ ↑ₛ _ ↑ₛ _) @ₛ
+                     ⟦ vz ⟧ₛ ⇒ₛ ⟦ vs vz ⟧ₛ @ₛ κ²ₛ _ ⟦ vz ⟧ₛ)) ⇒ₛ
+            ⟦ vz ⟧ₛ @ₛ ⟦ vs vz ⟧ₛ)).
 
-Lemma stand_lift : forall (Γ₀ Δ Γ₁ : HOL_ctx) (s : st),
+(*Lemma stand_lift : forall (Γ₀ Δ Γ₁ : HOL_ctx) (s : st),
     lift_tm Γ₀ Δ Γ₁ (s →ₛ ℙₛ) (Standardity (Γ₀ ++ Γ₁) s) =
       Standardity (Γ₀ ++ Δ ++ Γ₁) s.
 Proof.
@@ -75,7 +77,7 @@ Lemma stand_subst : forall (Γ Δ : HOL_ctx) (v : Γ ⊢ᵥ Δ) (s : st),
     Standardity Δ s ⟨[ v ]⟩ = Standardity Γ s.
 Proof.
   intros. induction s; autorewrite with Standardity subst_tm.
-Admitted.
+Admitted.*)
 
 Inductive proof : forall (Γ : HOL_ctx), proof_ctx Γ -> Γ ⊢ₛ ℙₛ -> Prop :=
 | pr_ax : forall {Γ : HOL_ctx} {Ξ : proof_ctx Γ} {φ : Γ ⊢ₛ ℙₛ},
@@ -91,9 +93,9 @@ Inductive proof : forall (Γ : HOL_ctx), proof_ctx Γ -> Γ ⊢ₛ ℙₛ -> Pro
     proof (s :: Γ) (map (fun φ => φ ↑ₛ s) Ξ) φ -> proof Γ Ξ (∀ₛ s φ)
 | pr_fora_e : forall {Γ : HOL_ctx} {s : st} {Ξ : proof_ctx Γ}
                      {φ : s :: Γ ⊢ₛ ℙₛ} (t : Γ ⊢ₛ s),
-    proof Γ Ξ (∀ₛ s φ) -> proof Γ Ξ (φ ⟨[ t ::ᵥ id_subst Γ ]⟩)
-| pr_stand : forall {Γ : HOL_ctx} (s : st) {Ξ : proof_ctx Γ},
-    proof Γ Ξ (∀ₛ s (Standardity (s :: Γ) s @ₛ ⟦ vz ⟧ₛ)).
+    proof Γ Ξ (∀ₛ s φ) -> proof Γ Ξ (φ ⟨[ t ::ᵥ id_subst Γ ]⟩).
+(*| pr_stand : forall {Γ : HOL_ctx} (s : st) {Ξ : proof_ctx Γ},
+    proof Γ Ξ (∀ₛ s (Standardity (s :: Γ) s @ₛ ⟦ vz ⟧ₛ)).*)
 
 Notation "Γ ∣ Ξ ⊢ᴴᴼᴸ φ" := (proof Γ Ξ φ) (at level 65).
 
@@ -103,8 +105,9 @@ Lemma pr_lift :
     Γ₀ ++ Δ ++ Γ₁ ∣ map (lift_tm Γ₀ Δ Γ₁ ℙₛ) Ξ ⊢ᴴᴼᴸ lift_tm Γ₀ Δ Γ₁ ℙₛ φ.
 Proof.
   intros. dependent induction H.
-  - admit.
-  - admit.
+  - apply pr_ax. apply in_map. apply H.
+  - apply (pr_red (lift_tm Γ₀ Δ Γ₁ ℙₛ φ0)).
+    apply lift_b_eq. apply H. apply IHproof; reflexivity.
   - autorewrite with lift_tm.
     apply pr_imp_i.
     specialize (IHproof Γ₀ Γ₁ (φ0 :: Ξ) ψ). apply IHproof; reflexivity.
@@ -117,13 +120,14 @@ Proof.
     rewrite map_map.
     assert (map (fun x => lift_tm (s :: Γ₀) Δ Γ₁ ℙₛ (x ↑ₛ s)) Ξ =
               map (fun x => lift_tm Γ₀ Δ Γ₁ ℙₛ x ↑ₛ s) Ξ).
-    apply map_ext. intro φ. admit.
+    apply map_ext. intro φ.
+    admit.
     rewrite <- H0. apply IHproof; reflexivity.
   - specialize (IHproof Γ₀ Γ₁ Ξ (∀ₛ s φ0) JMeq_refl JMeq_refl JMeq_refl).
     autorewrite with lift_tm in IHproof.
     apply (pr_fora_e (lift_tm Γ₀ Δ Γ₁ s t)) in IHproof.
     admit.
-  - admit.
+(*  - admit.*)
 Admitted.
 
 Lemma pr_up :
@@ -138,8 +142,8 @@ Lemma pr_subst :
     Δ ∣ Ξ ⊢ᴴᴼᴸ φ -> Γ ∣ map (subst_tm v) Ξ ⊢ᴴᴼᴸ φ ⟨[ v ]⟩.
 Proof.
   intros; revert Γ v. dependent induction H; intros.
-  - admit.
-  - admit.
+  - apply pr_ax. apply in_map. apply H.
+  - apply (pr_red (φ ⟨[ v ]⟩)). apply subst_b_eq. apply H. apply IHproof.
   - autorewrite with subst_tm. apply pr_imp_i. apply IHproof.
   - apply (pr_imp_e (φ ⟨[ v ]⟩)).
     apply IHproof1. apply IHproof2.
@@ -153,10 +157,13 @@ Proof.
   - rewrite subst_subst. autorewrite with comp_vec.
     rewrite id_comp_l.
     specialize (IHproof Γ0 v).
+    autorewrite with subst_tm in IHproof.
+    apply (pr_fora_e (t ⟨[ v ]⟩)) in IHproof.
+    rewrite subst_subst in IHproof.
     admit.
-  - autorewrite with subst_tm. rewrite stand_subst.
+(*  - autorewrite with subst_tm. rewrite stand_subst.
     specialize (@pr_stand Γ0 s (map (subst_tm v) Ξ)) as H.
-    apply H.
+    apply H.*)
 Admitted.
 
 Lemma pr_weaken :
@@ -175,10 +182,68 @@ Proof.
   - apply pr_fora_i. apply IHproof.
     apply incl_map. apply H.
   - apply (pr_fora_e t). apply IHproof. apply H.
-  - apply pr_stand.
+(*  - apply pr_stand.*)
 Qed.
 
 Corollary pr_weaken_1 :
   forall {Γ : HOL_ctx} {Ξ : proof_ctx Γ} {φ : Γ ⊢ₛ ℙₛ},
     Γ ∣ Ξ ⊢ᴴᴼᴸ φ -> forall ψ : Γ ⊢ₛ ℙₛ, Γ ∣ ψ :: Ξ ⊢ᴴᴼᴸ φ.
 Proof. intros. exact (pr_weaken Ξ (ψ :: Ξ) (incl_tl ψ (incl_refl Ξ)) H). Qed.
+
+Definition Theory : Type := ⟨⟩⊢ₛ ℙₛ -> Prop.
+
+Definition Th_proof (𝒯 : Theory) (Γ : HOL_ctx) (Ξ : proof_ctx Γ)
+  (φ : Γ ⊢ₛ ℙₛ) : Prop := exists Ξ' : proof_ctx nil,
+    Forall 𝒯 Ξ' /\ Γ ∣ map (fun x => cl_to_ctx x Γ) Ξ' ++ Ξ ⊢ᴴᴼᴸ φ.
+
+Notation "Γ ∣ Ξ ⊢⟨ 𝒯 ⟩ φ" := (Th_proof 𝒯 Γ Ξ φ) (at level 65).
+
+Definition Th0 (s : st) : ⟨⟩⊢ₛ ℙₛ :=
+  ∀ₛ s ((Standardity s ↑ₛ s) @ₛ ⟦ vz ⟧ₛ).
+
+Definition 𝒯₀ : Theory := fun φ => exists s : st, φ = Th0 s.
+
+Lemma pr_ind_N :
+  forall {Γ : HOL_ctx} {Ξ : proof_ctx Γ} (φ : ℕₛ :: Γ ⊢ₛ ℙₛ),
+    Γ ∣ Ξ ⊢⟨ 𝒯₀ ⟩ φ ⟨[ 0ₛ ::ᵥ id_subst Γ ]⟩ ->
+    ℕₛ :: Γ ∣
+      φ :: map (fun x => x ↑ₛ ℕₛ) Ξ ⊢⟨ 𝒯₀ ⟩ φ
+      ⟨[ Sₛ ⟦ vz ⟧ₛ ::ᵥ lift1_vec (id_subst Γ) ℕₛ ]⟩ ->
+    Γ ∣ Ξ ⊢⟨ 𝒯₀ ⟩ ∀ₛ ℕₛ φ.
+Proof.
+  intros.
+  pose (φ₀ := ∀ₛ ℕₛ ((Standardity ℕₛ ↑ₛ ℕₛ) @ₛ ⟦ vz ⟧ₛ)).
+  exists [φ₀].
+  split. constructor. exists ℕₛ. reflexivity. constructor.
+  unfold φ₀. autorewrite with Standardity.
+  simpl.
+  assert (cl_to_ctx
+            (∀ₛ ℕₛ
+              ((ƛₛ ℕₛ
+                  (∀ₛ (ℕₛ →ₛ ℙₛ)
+                    (⟦ vz ⟧ₛ @ₛ 0ₛ
+                       ⇒ₛ ∀ₛ ℕₛ (⟦ vs vz ⟧ₛ @ₛ ⟦ vz ⟧ₛ ⇒ₛ ⟦ vs vz ⟧ₛ @ₛ Sₛ ⟦ vz ⟧ₛ)
+                           ⇒ₛ ⟦ vz ⟧ₛ @ₛ ⟦ vs vz ⟧ₛ))
+                  ↑ₛ ℕₛ) @ₛ
+                 ⟦ vz ⟧ₛ)) Γ =
+         (∀ₛ ℕₛ
+              ((ƛₛ ℕₛ
+                  (∀ₛ (ℕₛ →ₛ ℙₛ)
+                    (⟦ vz ⟧ₛ @ₛ 0ₛ
+                       ⇒ₛ ∀ₛ ℕₛ (⟦ vs vz ⟧ₛ @ₛ ⟦ vz ⟧ₛ ⇒ₛ ⟦ vs vz ⟧ₛ @ₛ Sₛ ⟦ vz ⟧ₛ)
+                           ⇒ₛ ⟦ vz ⟧ₛ @ₛ ⟦ vs vz ⟧ₛ))
+                  ↑ₛ ℕₛ) @ₛ
+                 ⟦ vz ⟧ₛ))) as temp.
+  admit.
+  rewrite temp; clear temp.
+  pose (φℕ :=
+          ∀ₛ ℕₛ
+           ((ƛₛ ℕₛ
+               (∀ₛ (ℕₛ →ₛ ℙₛ)
+                 (⟦ vz ⟧ₛ @ₛ 0ₛ
+                    ⇒ₛ ∀ₛ ℕₛ (⟦ vs vz ⟧ₛ @ₛ ⟦ vz ⟧ₛ ⇒ₛ ⟦ vs vz ⟧ₛ @ₛ Sₛ ⟦ vz ⟧ₛ)
+                        ⇒ₛ ⟦ vz ⟧ₛ @ₛ ⟦ vs vz ⟧ₛ))
+               ↑ₛ ℕₛ) @ₛ
+              ⟦ vz ⟧ₛ) : Γ ⊢ₛ ℙₛ).
+  admit.
+Admitted.
